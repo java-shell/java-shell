@@ -98,12 +98,6 @@ public final class ModuleManagement {
 									} catch (Exception e) {
 										log.log("Failed to load resource class " + res[i].getName());
 									}
-									/*
-									 * log.log("Loading resource class"); final BufferedInputStream b = new
-									 * BufferedInputStream( new FileInputStream(res[i])); byte[] bytes = new
-									 * byte[(int) res[i].length()]; b.read(bytes); bcl.getClass(bytes);
-									 * log.log("Loaded resource class: " + res[i].getName());
-									 */
 								}
 								res[i] = null;
 								ures[i] = null;
@@ -113,11 +107,6 @@ public final class ModuleManagement {
 						}
 						if (f.exists()) {
 							try {
-								// final BufferedInputStream b = new
-								// BufferedInputStream(
-								// new FileInputStream(f));
-								// byte[] bytes = new byte[(int) f.length()];
-								// b.read(bytes);
 								final Class<?> classtmp = urlc.loadClass(s + ".module");
 								final Module mod = (Module) classtmp.newInstance();
 								modules.put(mod.getName(), mod);
