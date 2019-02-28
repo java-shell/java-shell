@@ -75,6 +75,7 @@ public class Launch {
 
 	static {
 		try {
+			// Create ClassLoader for Commands and Modules
 			loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -85,11 +86,14 @@ public class Launch {
 	public static Hashtable<String, Command> cmds = new Hashtable<String, Command>();
 
 	public Launch(String[] args) {
+		// Check arguments
 		if (args.length > 0) {
 			if (args[0].equals("-n") || args[0].equals("--no-terminal")) {
 				doTerm = false;
 			}
 		}
+		// If the application is being run without SU privilege, modify paths to
+		// accomadate permission level
 		if (System.getProperty("user.name") != "root" && fPrefix.equals("")) {
 			isRoot = false;
 			fPrefix = System.getProperty("user.home") + "/JSH/";
@@ -101,7 +105,9 @@ public class Launch {
 		}
 		confD = new File(fPrefix + "/config");
 
+		// Begin Shell init
 		log.log("Starting shell!");
+		// Native lib for direct keyboard entry, only works on EVDEV systems
 		File lib = new File("/lib/_JSHIN.so");
 		if (lib.exists()) {
 			System.load("/lib/_JSHIN.so");
@@ -117,6 +123,7 @@ public class Launch {
 				}
 			}
 		}
+		// Redirect standard I/O
 		try {
 			if (!isRoot) {
 				File tmp = new File(fPrefix + "/tmp/");
@@ -137,6 +144,8 @@ public class Launch {
 		}
 
 		// CODEAT Redirect I/O Streams
+
+		// Send ERR to error log
 		try {
 			File f = new File(fPrefix + "/var/log/JSH");
 			if (!f.exists()) {
@@ -171,10 +180,13 @@ public class Launch {
 		ModuleManagement mm = new ModuleManagement();
 		mm.start();
 		try {
-			// list = new _Listener();
+			// list = new _Listener(); //Old code for setting up EVDEV hook listener,
+			// deprecated but likely to be updated
 		} catch (NullPointerException e) {
 			e.printStackTrace();
 		}
+
+		// Register event types
 		EventManager.registerEvType("Dummy");
 		EventManager.registerListener(new DummyListener(), "Dummy");
 		EventInterpreter.addType(new DummyType());
@@ -188,24 +200,30 @@ public class Launch {
 			e.printStackTrace();
 		}
 
+		// Check terminal flags, if none are detected launch terminal, otherwise run as
+		// daemon
 		if (doTerm && Boolean.parseBoolean((String) launchConf.getValue("launchTerminal"))) {
 			log.log("Accessing " + fPrefix + "/bin/jsh");
+			// readBin, read commands from <prefix>/bin/JSH
 			readBin();
 			// Get commands from terra.shell.command
 
+			// Check whether or not embedded commands are enabled
 			if (Boolean.parseBoolean((String) launchConf.getValue("loadEmbeddedCmds"))) {
 				log.log("Loading embedded commands");
 				try {
+					// Load embedded commands
 					getLocalCommands();
 				} catch (IOException e) {
 					e.printStackTrace();
 					log.err("Failed to access local embedded commands");
 				}
 			}
-
+			// Init Terminal
 			Terminal t = new Terminal();
 			t.run();
 		}
+		// Keep Main thread alive
 		while (keepergone)
 			try {
 				Thread.sleep(100);
@@ -214,6 +232,7 @@ public class Launch {
 			}
 	}
 
+	// Load embedded commands located in terra.shell.command.builtin
 	private void getLocalCommands() throws IOException {
 		GarbageCollection gc = new GarbageCollection();
 		cmds.put(gc.getName(), gc);
@@ -269,16 +288,20 @@ public class Launch {
 		log.log("Loaded embedded command: " + cm.getName());
 	}
 
+	// Halt JSH
 	public static void stop() {
 		keepergone = false;
 	}
 
+	// Returns configuration directory, <prefix>/config
 	public static File getConfD() {
 		return confD;
 	}
 
+	// Load configurations from confD
 	public static void loadConfigs() {
 		log.log("Loading Configurations from " + fPrefix + "/config...");
+		// Check if dir exists, if false create new dir
 		if (!confD.exists()) {
 			try {
 				confD.mkdir();
@@ -289,14 +312,18 @@ public class Launch {
 				return;
 			}
 		}
+		// Check that confD is a dir, if not, do nothing
 		if (!confD.isDirectory())
 			return;
+		// Load files from confD
 		File[] cf = confD.listFiles();
 		for (int i = 0; i < cf.length; i++) {
+			// Create Configuration object wrappers for conf files
 			confs.put(cf[i].getName(), new Configuration(cf[i]));
 		}
 	}
 
+	// Get a config
 	public static Configuration getConfig(String conf) {
 		if (confs.containsKey(conf)) {
 			return confs.get(conf);
@@ -304,18 +331,23 @@ public class Launch {
 		return null;
 	}
 
+	// Get all loaded commands
 	public static Hashtable<String, Command> getCmds() {
 		return cmds;
 	}
 
+	// Get the cluster ConnectionManager
 	public static ConnectionManager getConnectionMan() {
 		return clusterManager;
 	}
 
 	// TODO enable remote repositories for commands
+	// Load in commands
 	public static void readBin() {
 		final File bin = new File(fPrefix + "/bin/jsh");
+		// Check if dir exists
 		if (!bin.exists()) {
+			// If dir is non existent, tell the user and ask to use a remote repo
 			log.log(fPrefix + "/bin/jsh is not existent!");
 			while (true) {
 				log.log("Use a remote repository? [Y/N]");
@@ -334,13 +366,14 @@ public class Launch {
 				}
 
 			}
-			// log.log("Alot is about to go VERY VERY Wrong!");
 		} else {
+			// If dir exists, load commands normally
 			log.log("Loading Commands in " + fPrefix + "/bin/jsh...");
 			final File[] binFiles = bin.listFiles();
 			for (int i = 0; i < binFiles.length; i++) {
 				final File tmp = binFiles[i];
 				try {
+					// TODO Check if a new classloader needs to be created each load cycle
 					loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -403,6 +436,7 @@ public class Launch {
 		}
 	}
 
+	// Reload commands
 	public static void rlCmds() {
 		cmds.clear();
 		cmds = new Hashtable<String, Command>();
@@ -422,6 +456,7 @@ public class Launch {
 		return loader;
 	}
 
+	// Register a device, EVDEV
 	public static void regDev(String inter, String dev) {
 		final EventType tmp = EventInterpreter.getType(inter);
 		if (tmp != null) {
