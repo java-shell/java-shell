@@ -25,7 +25,10 @@ public class Configuration {
 
 	/**
 	 * Create a new configuration object
-	 * @param f File to use as the configuration file (Please use Launch.getConfD()'s directory to keep all of your conf files)
+	 * 
+	 * @param f
+	 *            File to use as the configuration file (Please use
+	 *            Launch.getConfD()'s directory to keep all of your conf files)
 	 */
 	public Configuration(File f) {
 		type = 0;
@@ -35,7 +38,9 @@ public class Configuration {
 
 	/**
 	 * Create a virtual read-only configuration object using an InputStream
-	 * @param f An InputStream which contains configuration information.
+	 * 
+	 * @param f
+	 *            An InputStream which contains configuration information.
 	 */
 	public Configuration(InputStream f) {
 		type = 1;
@@ -45,7 +50,9 @@ public class Configuration {
 
 	/**
 	 * Create a configuration object using a URL
-	 * @param f The URL to look at for configuration information
+	 * 
+	 * @param f
+	 *            The URL to look at for configuration information
 	 */
 	public Configuration(URL f) {
 		type = 2;
@@ -54,6 +61,8 @@ public class Configuration {
 	}
 
 	private void parse() {
+		if (!f.exists())
+			return;
 		InputStream tmp = null;
 		if (type == 0) {
 			try {
@@ -104,7 +113,9 @@ public class Configuration {
 
 	/**
 	 * Get a configuration value as an object
-	 * @param id The key used to identify the value required
+	 * 
+	 * @param id
+	 *            The key used to identify the value required
 	 * @return The value requested
 	 */
 	public Object getValue(String id) {
@@ -116,7 +127,9 @@ public class Configuration {
 
 	/**
 	 * Attempts to convert the value assigned to 'id' to an int
-	 * @param id The key used to identify the value required
+	 * 
+	 * @param id
+	 *            The key used to identify the value required
 	 * @return The value requested as an int
 	 */
 	public int getValueAsInt(String id) {
@@ -137,9 +150,13 @@ public class Configuration {
 	}
 
 	/**
-	 * Sets a configuration value (Only works if the configuration was constructed with a File object, otherwise does nothing
-	 * @param id Key used to identify this value
-	 * @param value Value to placed in the configuration
+	 * Sets a configuration value (Only works if the configuration was constructed
+	 * with a File object, otherwise does nothing
+	 * 
+	 * @param id
+	 *            Key used to identify this value
+	 * @param value
+	 *            Value to placed in the configuration
 	 */
 	public void setValue(String id, Object value) {
 		vlist.put(id, value);
