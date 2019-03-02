@@ -174,8 +174,10 @@ public class Launch {
 			launchConf.setValue("loadEmbeddedCmds", "true");
 			launchConf.setValue("launchTerminal", "true");
 		}
-		//Check for System configuration, if not found create one and add default values
+		// Check for System configuration, if not found create one and add default
+		// values
 		if (getConfig("system") == null) {
+			log.log(fPrefix + "config/system not found, creating!");
 			Configuration sysConf = new Configuration(new File(fPrefix + "system"));
 			sysConf.setValue("moduleLoad", "true");
 		}
