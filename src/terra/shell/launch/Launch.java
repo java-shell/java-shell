@@ -372,6 +372,9 @@ public class Launch {
 			final File[] binFiles = bin.listFiles();
 			for (int i = 0; i < binFiles.length; i++) {
 				final File tmp = binFiles[i];
+				if(!tmp.getName().endsWith(".class")) {
+					continue;
+				}
 				try {
 					// TODO Check if a new classloader needs to be created each load cycle
 					loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });

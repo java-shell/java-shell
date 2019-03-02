@@ -29,7 +29,7 @@ public final class ConnectionManager {
 	private LinkedList<Node> nodes = new LinkedList<>();
 	private Logger log = LogManager.getLogger("ClusterManager");
 	private LocalServer ls;
-	private String ipFormat = "192.168.1.1.";
+	private String ipFormat = "192.168.1.X";
 	private int port = 2100, activeProcessLimit = 20, passiveProcessLimit = 10, connectionLimit = 5, ipScanRangeMin = 1,
 			ipScanRangeMax = 253;
 
@@ -170,9 +170,11 @@ public final class ConnectionManager {
 		PrintStream out;
 		Scanner sc;
 		// Scan all IP's from range 1-253
+		InetSocketAddress rolling;
 		for (int i = ipScanRangeMin; i <= ipScanRangeMax; i++) {
 			try {
-				s.connect(new InetSocketAddress(ip + i, port), 10);
+				rolling = new InetSocketAddress(ip.replace("X", ""+i), port);
+				s.connect(rolling, 10);
 				out = new PrintStream(s.getOutputStream());
 				sc = new Scanner(s.getInputStream());
 
