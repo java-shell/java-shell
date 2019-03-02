@@ -174,6 +174,11 @@ public class Launch {
 			launchConf.setValue("loadEmbeddedCmds", "true");
 			launchConf.setValue("launchTerminal", "true");
 		}
+		//Check for System configuration, if not found create one and add default values
+		if (getConfig("system") == null) {
+			Configuration sysConf = new Configuration(new File(fPrefix + "system"));
+			sysConf.setValue("moduleLoad", "true");
+		}
 
 		// CODEAT Set variables
 		Variables.setVar(new GeneralVariable("Log.filter", "true"));
@@ -372,7 +377,7 @@ public class Launch {
 			final File[] binFiles = bin.listFiles();
 			for (int i = 0; i < binFiles.length; i++) {
 				final File tmp = binFiles[i];
-				if(!tmp.getName().endsWith(".class")) {
+				if (!tmp.getName().endsWith(".class")) {
 					continue;
 				}
 				try {
