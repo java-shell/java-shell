@@ -178,8 +178,16 @@ public class Launch {
 		// values
 		if (getConfig("system") == null) {
 			log.log(fPrefix + "config/system not found, creating!");
-			Configuration sysConf = new Configuration(new File(fPrefix + "system"));
-			sysConf.setValue("moduleLoad", "true");
+			final File sysFile = new File(fPrefix + "system");
+			try {
+				if (!sysFile.createNewFile()) {
+					throw new IOException();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			Configuration sysConf = new Configuration(sysFile);
+			sysConf.setValue("moduleload", "true");
 		}
 
 		// CODEAT Set variables

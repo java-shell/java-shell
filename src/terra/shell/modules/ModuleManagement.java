@@ -96,7 +96,9 @@ public final class ModuleManagement {
 										urlc.loadClass(ures[i]);
 										log.log("Loaded resource class " + res[i].getName() + " for " + s);
 									} catch (Exception e) {
-										log.log("Failed to load resource class " + res[i].getName());
+										log.log("Failed to load resource class " + res[i].getPath());
+										log.log(e.getMessage());
+										e.printStackTrace(System.err);
 									}
 								}
 								res[i] = null;
