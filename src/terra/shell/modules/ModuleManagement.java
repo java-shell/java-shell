@@ -53,13 +53,14 @@ public final class ModuleManagement {
 			} else if (Boolean.parseBoolean((String) Launch.getConfig("system").getValue("moduleload"))) {
 				log.log("Loading modules");
 				try {
+					File prefix = Launch.getConfD().getParentFile();
+
 					Scanner sc = new Scanner(new FileInputStream(mods));
-					JSHClassLoader urlc = new JSHClassLoader(new URL[] { new URL("file:///modules/") });
+					JSHClassLoader urlc = new JSHClassLoader(new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
 
 					if (Launch.modularizedCmds) {
 
 					}
-					File prefix = Launch.getConfD().getParentFile();
 					String s;
 					while (sc.hasNext()) {
 						Thread.sleep(10);
@@ -97,7 +98,7 @@ public final class ModuleManagement {
 										log.log("Loaded resource class " + res[i].getName() + " for " + s);
 									} catch (Exception e) {
 										log.log("Failed to load resource class " + res[i].getPath());
-										log.log(e.getMessage());
+										log.log(e.getMessage() + "\n");
 										e.printStackTrace(System.err);
 									}
 								}
