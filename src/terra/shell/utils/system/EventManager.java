@@ -18,8 +18,8 @@ public final class EventManager {
 	private static Logger log = LogManager.getLogger("EventManager");
 
 	/**
-	 * Register a Listener which will be triggered by the Event type specified
-	 * with evtype.
+	 * Register a Listener which will be triggered by the Event type specified with
+	 * evtype.
 	 * 
 	 * @param el
 	 *            The Listener to be triggered.
@@ -45,26 +45,25 @@ public final class EventManager {
 	}
 
 	/**
-	 * Invoke an Event. This will search through all registered evtypes and
-	 * trigger any related Listeners. The Event.getType() value is used as the
-	 * evtype.
+	 * Invoke an Event. This will search through all registered evtypes and trigger
+	 * any related Listeners. The Event.getType() value is used as the evtype.
 	 * 
 	 * @param e
-	 *            Esvent to invoke.
+	 *            Event to invoke.
 	 */
 	public static void invokeEvent(Event e) {
 		try {
 			if (e == null) {
 				return;
 			}
-			String id = e.getClass().getConstructors()[0].getAnnotation(
-					Event.EventPriority.class).id();
+			// CODEAT Debug line
+			// log.log("Invoking: " + e.getCreator());
+			String id = e.getClass().getConstructors()[0].getAnnotation(Event.EventPriority.class).id();
 			if (id.equals(Event.GENERAL_TYPE)) {
 				id = e.getCreator();
 			}
 
-			final int priority = e.getClass().getConstructors()[0]
-					.getAnnotation(Event.EventPriority.class).value();
+			final int priority = e.getClass().getConstructors()[0].getAnnotation(Event.EventPriority.class).value();
 
 			final ArrayList<EventListener> avail = listeners.get(id);
 
@@ -74,7 +73,8 @@ public final class EventManager {
 
 			for (int i = 0; i < avail.size(); i++) {
 				avail.get(i).trigger(e);
-				// log.log("TRIGGERING");
+				// CODEAT Debug line
+				// log.log("Triggering: " + e.getCreator());
 			}
 			id = null;
 		} catch (Exception e1) {
