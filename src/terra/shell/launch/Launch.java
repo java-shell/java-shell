@@ -8,7 +8,9 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.Socket;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -373,6 +375,15 @@ public class Launch {
 					// TODO Load commands from repo, break from loop
 					// Compare commands MD5 sums to expected
 					// Define default repo location
+					log.log("Repository Address:");
+					log.print(">");
+					String address = sc.nextLine();
+					try {
+						loadCmdsRepo(address);
+					} catch (Exception e) {
+						e.printStackTrace();
+						continue;
+					}
 
 					break;
 
@@ -431,6 +442,51 @@ public class Launch {
 			log.log("All commands in " + fPrefix + "/bin/jsh loaded!");
 		}
 
+	}
+
+	private static void loadCmdsRepo(String address) throws UnknownHostException, IOException {
+		// Connect to repo
+		Socket s = new Socket(address, 2101);
+		Scanner sc = new Scanner(s.getInputStream());
+		PrintStream out = new PrintStream(s.getOutputStream());
+		// Ask for all CMDS
+		out.println("CMDS");
+		while (true) {
+			// Tell server ready to receive
+			out.println("READY");
+			// Receive header, parse
+			String[] fileInf = sc.nextLine().split(":");
+			// If header is bad, throw error
+			if (fileInf.length < 3) {
+				log.err("Bad command header from server, failed to load command");
+				// If server says complete, break loop
+			}
+
+			// Begin loading file
+			int fileSize = Integer.parseInt(fileInf[2]);
+			byte[] file = new byte[fileSize];
+
+			// Get File from server
+			for (int i = 0; i < fileSize; i++) {
+				file[i] = (byte) s.getInputStream().read();
+			}
+
+			// Instantiate command, add to Command list
+			try {
+				Command c = (Command) loader.getClass(file).newInstance();
+				cmds.put(c.getName(), c);
+				log.log("Command Loaded: " + c.getName());
+			} catch (IllegalAccessException e) {
+				e.printStackTrace();
+			} catch (InstantiationException e) {
+				e.printStackTrace();
+			}
+
+			if (sc.nextLine().equals("COMPLETE")) {
+				log.log("Completed loading commands from " + address);
+				break;
+			}
+		}
 	}
 
 	public static void doHibernate() {
