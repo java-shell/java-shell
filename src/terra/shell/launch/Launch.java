@@ -451,6 +451,7 @@ public class Launch {
 		PrintStream out = new PrintStream(s.getOutputStream());
 		// Ask for all CMDS
 		out.println("CMDS");
+		out.println("READY");
 		while (true) {
 			// Tell server ready to receive
 			out.println("READY");
@@ -466,27 +467,42 @@ public class Launch {
 			int fileSize = Integer.parseInt(fileInf[2]);
 			byte[] file = new byte[fileSize];
 
+			ArrayList<Byte> fileS = new ArrayList<Byte>();
+
+			log.log("File size: " + fileSize);
+
 			// Get File from server
-			for (int i = 0; i < fileSize; i++) {
-				file[i] = (byte) s.getInputStream().read();
+			int n, i = 0;
+			while ((n = s.getInputStream().read()) != -1) {
+				fileS.add(Byte.valueOf((byte) n));
+				i++;
 			}
+
+			log.log("File received, size: " + i);
 
 			// Instantiate command, add to Command list
 			try {
 				Command c = (Command) loader.getClass(file).newInstance();
 				cmds.put(c.getName(), c);
 				log.log("Command Loaded: " + c.getName());
+				// Catch exceptions, and continue to next iteration
 			} catch (IllegalAccessException e) {
 				e.printStackTrace();
+				continue;
 			} catch (InstantiationException e) {
 				e.printStackTrace();
+				continue;
 			}
 
-			if (sc.nextLine().equals("COMPLETE")) {
+			String next = sc.nextLine();
+
+			if (next.equals("COMPLETE")) {
 				log.log("Completed loading commands from " + address);
 				break;
 			}
 		}
+		sc.close();
+		s.close();
 	}
 
 	public static void doHibernate() {
