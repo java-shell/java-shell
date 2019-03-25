@@ -472,10 +472,9 @@ public class Launch {
 			log.log("File size: " + fileSize);
 
 			// Get File from server
-			int n, i = 0;
-			while ((n = s.getInputStream().read()) != -1) {
-				fileS.add(Byte.valueOf((byte) n));
-				i++;
+			int i;
+			for (i = 0; i < fileSize; i++) {
+				file[i] = (byte) s.getInputStream().read();
 			}
 
 			log.log("File received, size: " + i);
