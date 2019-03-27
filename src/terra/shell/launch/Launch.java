@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
@@ -446,7 +447,9 @@ public class Launch {
 
 	private static void loadCmdsRepo(String address) throws UnknownHostException, IOException {
 		// Connect to repo
-		Socket s = new Socket(address, 2101);
+		Socket s = new Socket();
+		s.setReceiveBufferSize(512);
+		s.connect(new InetSocketAddress(address, 2101), 100);
 		Scanner sc = new Scanner(s.getInputStream());
 		PrintStream out = new PrintStream(s.getOutputStream());
 		// Ask for all CMDS
