@@ -173,7 +173,7 @@ public final class ConnectionManager {
 		InetSocketAddress rolling;
 		for (int i = ipScanRangeMin; i <= ipScanRangeMax; i++) {
 			try {
-				rolling = new InetSocketAddress(ip.replace("X", ""+i), port);
+				rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
 				s.connect(rolling, 10);
 				out = new PrintStream(s.getOutputStream());
 				sc = new Scanner(s.getInputStream());
@@ -263,6 +263,9 @@ public final class ConnectionManager {
 
 		// CODEAT Client Handling
 		private void handleClient(final Socket s) throws IOException {
+
+			log.debug("Got connection");
+
 			final Scanner sc = new Scanner(s.getInputStream());
 			final PrintStream out = new PrintStream(s.getOutputStream());
 			// TODO Add client handling

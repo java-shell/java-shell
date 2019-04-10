@@ -3,6 +3,7 @@ package terra.shell.logging;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
+import terra.shell.launch.Launch;
 import terra.shell.utils.system.Variables;
 
 /**
@@ -39,20 +40,20 @@ public class Logger {
 	}
 
 	/**
-	 * Specify whether or not to use an OutputStream or to use the
-	 * LogManager.write function
+	 * Specify whether or not to use an OutputStream or to use the LogManager.write
+	 * function
 	 * 
 	 * @param useOut
-	 *            Whether or not to use an OutputStream (True) or
-	 *            LogManager.write (False) Default: False
+	 *            Whether or not to use an OutputStream (True) or LogManager.write
+	 *            (False) Default: False
 	 */
 	public void useOut(boolean useOut) {
 		this.useOut = useOut;
 	}
 
 	/**
-	 * Create a Logger with this numerical ID, the ID will be used as the
-	 * Display Name
+	 * Create a Logger with this numerical ID, the ID will be used as the Display
+	 * Name
 	 * 
 	 * @param id
 	 *            Numerical ID
@@ -64,8 +65,8 @@ public class Logger {
 	}
 
 	/**
-	 * Write a String out to the current OutputStream. This String will be
-	 * checked for variables within the String unless otherwise specified.
+	 * Write a String out to the current OutputStream. This String will be checked
+	 * for variables within the String unless otherwise specified.
 	 * 
 	 * @param s
 	 *            String to write.
@@ -77,8 +78,8 @@ public class Logger {
 	}
 
 	/**
-	 * Write an array of Strings out to the current OutputStream. This Array
-	 * will be checked for variables within itself unless otherwise specified.
+	 * Write an array of Strings out to the current OutputStream. This Array will be
+	 * checked for variables within itself unless otherwise specified.
 	 * 
 	 * @param s
 	 *            Array Of String to be written.
@@ -94,8 +95,7 @@ public class Logger {
 	}
 
 	/**
-	 * Whether or not to find and replace variables within Strings being
-	 * written.
+	 * Whether or not to find and replace variables within Strings being written.
 	 * 
 	 * @param filter
 	 */
@@ -156,6 +156,17 @@ public class Logger {
 	 */
 	public void err(String s) {
 		System.err.print("[" + name + "] " + s + "\n");
+	}
+
+	public void debug(String s) {
+		debug(s, out);
+	}
+
+	public void debug(String s, PrintStream out) {
+		if (Boolean.parseBoolean((String) Launch.getConfig("Launch").getValue("debug"))) {
+			log("[DEBUG] " + s, out);
+		}
+
 	}
 
 	/**

@@ -176,6 +176,7 @@ public class Launch {
 			launchConf = new Configuration(new File(confD.getPath(), "launch"));
 			launchConf.setValue("loadEmbeddedCmds", "true");
 			launchConf.setValue("launchTerminal", "true");
+			launchConf.setValue("debug", "false");
 		}
 		// Check for System configuration, if not found create one and add default
 		// values
@@ -454,7 +455,7 @@ public class Launch {
 		PrintStream out = new PrintStream(s.getOutputStream());
 		// Ask for all CMDS
 		out.println("CMDS");
-		out.println("READY");
+		out.println("READY"); 
 		while (true) {
 			// Tell server ready to receive
 			out.println("READY");
