@@ -283,6 +283,7 @@ public final class ConnectionManager {
 			} else {
 				// Check connection limit, if exceeded refuse connection
 				if (connections >= connectionLimit) {
+					log.debug("Too Many connections, refusing");
 					s.close();
 					sc.close();
 					return;
@@ -294,6 +295,7 @@ public final class ConnectionManager {
 					// - De-serialize
 					// - Execute
 					// - Return
+					log.debug("Passive connection received");
 					connections++;
 					out.println("RECEIVEDAT");
 					// Receive size of serialized process
@@ -302,13 +304,16 @@ public final class ConnectionManager {
 					// TODO Implement prioritizing
 					int priority = sc.nextInt();
 					// Allocate space for, and read in serialized process
+					log.debug("Got process of size " + size + " and priority " + priority);
 					byte[] ser = new byte[size];
 					for (int i = 0; i < size; i++) {
 						ser[i] = sc.nextByte();
 					}
+					log.debug("Done receiving process");
 					// De-serialize and instantiate process
 					ObjectInputStream objIn = new ObjectInputStream(new ByteArrayInputStream(ser));
 					Object processObj;
+					log.debug("Converting to Object");
 					try {
 						processObj = objIn.readObject();
 					} catch (ClassNotFoundException e) {
@@ -320,8 +325,10 @@ public final class ConnectionManager {
 						connections--;
 						return;
 					}
+					log.debug("Object converted sucecssfully");
 					objIn.close();
 					// Convert from object to process
+					log.debug("Creating JProcess");
 					JProcess process;
 					try {
 						process = (JProcess) processObj;
@@ -342,6 +349,8 @@ public final class ConnectionManager {
 					// cleanup
 					Thread processMonitor = new Thread(new Runnable() {
 						public void run() {
+							if (!procMon.isRunning())
+								procMon.run();
 							// Check if process is active every .5 seconds
 							while (procMon.isRunning()) {
 								try {
@@ -378,7 +387,6 @@ public final class ConnectionManager {
 						}
 					});
 					processMonitor.setName("ProcessMonitor:" + process.getName() + "-" + process.getUUID().toString());
-					process.run(false);
 					processMonitor.run();
 				}
 				if (in.equals("ACTIVE")) {
