@@ -88,7 +88,7 @@ public class Launch {
 	}
 	public static Hashtable<String, Command> cmds = new Hashtable<String, Command>();
 
-	public Launch(String[] args) {
+	private Launch(String[] args) {
 		// Check arguments
 		if (args.length > 0) {
 			if (args[0].equals("-n") || args[0].equals("--no-terminal")) {

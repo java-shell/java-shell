@@ -158,10 +158,24 @@ public class Logger {
 		System.err.print("[" + name + "] " + s + "\n");
 	}
 
+	/**
+	 * Debug stream, only prints if "debug" is marked true in launch configuration
+	 * 
+	 * @param s
+	 *            String to be written
+	 */
 	public void debug(String s) {
 		debug(s, out);
 	}
 
+	/**
+	 * Debug stream, only prints if "debug" is marked true in launch configuration
+	 * 
+	 * @param s
+	 *            String to be written
+	 * @param out
+	 *            Stream to write to
+	 */
 	public void debug(String s, PrintStream out) {
 		if (Boolean.parseBoolean((String) Launch.getConfig("Launch").getValue("debug"))) {
 			log("[DEBUG] " + s, out);

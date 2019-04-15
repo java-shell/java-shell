@@ -21,9 +21,11 @@ public class LogManager {
 	private static ArrayList<String> logNames = new ArrayList<String>();
 	private static Logger log = new Logger("LogManager", loggers, false);
 	public final static PrintStream out = new PrintStream(
-			new BufferedOutputStream(new FileOutputStream(FileDescriptor.out)),
-			true);
+			new BufferedOutputStream(new FileOutputStream(FileDescriptor.out)), true);
 	private static boolean writing = false;
+
+	private LogManager() {
+	}
 
 	/**
 	 * Creates a Logger with the specified name.

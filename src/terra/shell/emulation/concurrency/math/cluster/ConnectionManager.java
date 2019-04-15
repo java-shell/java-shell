@@ -264,7 +264,7 @@ public final class ConnectionManager {
 		// CODEAT Client Handling
 		private void handleClient(final Socket s) throws IOException {
 
-			log.debug("Got connection");
+			log.debug("Got connection from " + s.getInetAddress());
 
 			final Scanner sc = new Scanner(s.getInputStream());
 			final PrintStream out = new PrintStream(s.getOutputStream());
@@ -411,6 +411,7 @@ public final class ConnectionManager {
 		private boolean sendProcess(Inet4Address ip, JProcess p, ProcessPriority priority, OutputStream out,
 				InputStream in) throws UnknownHostException, IOException {
 			// Setup server connection
+			log.debug("Sending process: " + p.getName() + ", to " + ip);
 			Socket s = new Socket(ip.getHostAddress(), port);
 			Scanner sc = new Scanner(s.getInputStream());
 			PrintStream pOut = new PrintStream(s.getOutputStream());
@@ -418,7 +419,9 @@ public final class ConnectionManager {
 			// Send type of process to server
 			pOut.println("PASSIVE");
 			// If Server doesn't respond correctly, close and cleanup
-			if (!sc.nextLine().equals("RECEIVEDAT")) {
+			final String nextLine = sc.nextLine();
+			if (!nextLine.equals("RECEIVEDAT")) {
+				log.debug("Server incorrectly responded, expected \"RECEIVEDAT\" got \"" + nextLine + "\"");
 				// TODO add failure reason
 				s.close();
 				sc.close();
@@ -426,16 +429,19 @@ public final class ConnectionManager {
 			}
 
 			// Serialize process
+			log.debug("Serializing Process...");
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			ObjectOutputStream objOut = new ObjectOutputStream(bout);
 			objOut.writeObject(p);
 			objOut.flush();
 			objOut.close();
 			objOut = null;
+			log.debug("Serialization complete!");
 
 			// Turn serialized process into byte[]
 			byte[] dat = bout.toByteArray();
 			// Tell server [] length, and process priority
+			log.debug("Sending data of size " + dat.length);
 			pOut.println(dat.length + ":" + priority.asInt());
 			// Send serialized process to server
 			pOut.write(dat);
@@ -448,6 +454,7 @@ public final class ConnectionManager {
 				sc.close();
 				return false;
 			}
+			log.debug("Process sent");
 			// TODO Add reception of process output
 			// Use I/O redirect buffers? Need to read Socket input in order to determine
 			// process completion
