@@ -150,6 +150,17 @@ public class Configuration {
 	}
 
 	/**
+	 * Checks if a value has been assigned to this id
+	 * 
+	 * @param id
+	 *            The id who's value is being asserted
+	 * @return True if the id has a value, or exists
+	 */
+	public boolean hasID(String id) {
+		return vlist.contains(id);
+	}
+
+	/**
 	 * Sets a configuration value (Only works if the configuration was constructed
 	 * with a File object, otherwise does nothing
 	 * 

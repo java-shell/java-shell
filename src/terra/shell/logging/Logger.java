@@ -177,7 +177,7 @@ public class Logger {
 	 *            Stream to write to
 	 */
 	public void debug(String s, PrintStream out) {
-		if (Boolean.parseBoolean((String) Launch.getConfig("Launch").getValue("debug"))) {
+		if (LogManager.debug()) {
 			log("[DEBUG] " + s, out);
 		}
 

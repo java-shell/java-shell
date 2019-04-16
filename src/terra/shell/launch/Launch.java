@@ -178,6 +178,9 @@ public class Launch {
 			launchConf.setValue("launchTerminal", "true");
 			launchConf.setValue("debug", "false");
 		}
+		if (launchConf.hasID("debug")) {
+			LogManager.setDebug(Boolean.parseBoolean((String) launchConf.getValue("debug")));
+		}
 		// Check for System configuration, if not found create one and add default
 		// values
 		if (getConfig("system") == null) {
@@ -455,7 +458,7 @@ public class Launch {
 		PrintStream out = new PrintStream(s.getOutputStream());
 		// Ask for all CMDS
 		out.println("CMDS");
-		out.println("READY"); 
+		out.println("READY");
 		while (true) {
 			// Tell server ready to receive
 			out.println("READY");

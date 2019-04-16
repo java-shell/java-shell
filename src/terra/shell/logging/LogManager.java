@@ -23,6 +23,7 @@ public class LogManager {
 	public final static PrintStream out = new PrintStream(
 			new BufferedOutputStream(new FileOutputStream(FileDescriptor.out)), true);
 	private static boolean writing = false;
+	private static int debug = -1;
 
 	private LogManager() {
 	}
@@ -64,6 +65,26 @@ public class LogManager {
 	public static void removeLogger(Logger l) {
 		logs.remove(l.getId());
 		logNames.remove(l.getName());
+	}
+
+	public static boolean debug() {
+		if (debug == -1) {
+			log.log("Value for \"debug\" in launch conf not found, temporarily assigning the value of true");
+			debug = 1;
+		}
+		if (debug == 1) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public static void setDebug(boolean debugValue) {
+		if (debugValue)
+			debug = 1;
+		else {
+			debug = 0;
+		}
 	}
 
 	public static void write(String s) {
