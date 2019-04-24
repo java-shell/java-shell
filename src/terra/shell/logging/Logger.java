@@ -158,6 +158,15 @@ public class Logger {
 		System.err.print("[" + name + "] " + s + "\n");
 	}
 
+	public void debug(String s, int level) {
+		debug(s, out);
+	}
+
+	public void debug(String s, int level, PrintStream out) {
+		// TODO Add if statements to clarify debug verbosity
+		debug(s, out);
+	}
+
 	/**
 	 * Debug stream, only prints if "debug" is marked true in launch configuration
 	 * 

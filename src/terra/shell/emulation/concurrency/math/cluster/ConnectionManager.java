@@ -104,12 +104,11 @@ public final class ConnectionManager {
 	 * @return True if process is succesfully queued, false otherwise
 	 */
 	public boolean queueProcess(JProcess p, OutputStream out, InputStream in) {
-
 		// TODO Add node selection
 		try {
 			ls.sendProcess(nodes.getFirst().ip, p, ProcessPriority.MEDIUM, out, in);
 		} catch (Exception e) {
-
+			e.printStackTrace();
 		}
 		return true;
 	}
@@ -139,18 +138,22 @@ public final class ConnectionManager {
 	public long ping(String ip) throws UnknownHostException, IOException {
 		if (ip == null)
 			return -1;
+		log.debug("Sending PING request", 2);
 		Socket s = new Socket();
 		s.connect(new InetSocketAddress(ip, port), 1000);
-		log.log("Pinging: " + s.getInetAddress().getHostAddress());
+		log.debug("Pinging: " + s.getInetAddress().getHostAddress());
 		PrintStream out = new PrintStream(s.getOutputStream());
 		Scanner sc = new Scanner(s.getInputStream());
 
 		long startTimeStamp = System.currentTimeMillis();
 		out.println("PING");
+		log.debug("Sent PING\nAwaiting Response..", 2);
 		if (sc.nextLine().equals("CCSERVER")) {
+			long pingTime = System.currentTimeMillis() - startTimeStamp;
+			log.debug("Got CCSERVER response, ping is "+pingTime+"ms", 2);
 			s.close();
 			sc.close();
-			return System.currentTimeMillis() - startTimeStamp;
+			return pingTime;
 		}
 		s.close();
 		sc.close();
@@ -219,7 +222,7 @@ public final class ConnectionManager {
 	 * @throws IOException
 	 */
 	public boolean checkNodeAt(Inet4Address ip) throws UnknownHostException, IOException {
-		return (ping(ip) == 0);
+		return (ping(ip) != -1);
 	}
 
 	/**
@@ -275,7 +278,9 @@ public final class ConnectionManager {
 			String in = sc.nextLine();
 			// Check if PING is sent
 			if (in.equals("PING")) {
+				log.debug("Got PING request", 2);
 				out.println("CCSERVER");
+				log.debug("Sending CCSERVER", 3);
 				sc.close();
 				out.close();
 				s.close();
