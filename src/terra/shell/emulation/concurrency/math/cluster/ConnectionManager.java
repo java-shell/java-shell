@@ -97,8 +97,7 @@ public final class ConnectionManager {
 	/**
 	 * Queue a JProcess to be serialized and sent to another Node for processing
 	 * 
-	 * @param p
-	 *            JProcess to be sent
+	 * @param p   JProcess to be sent
 	 * @param out
 	 * @param in
 	 * @return True if process is succesfully queued, false otherwise
@@ -116,8 +115,7 @@ public final class ConnectionManager {
 	/**
 	 * Ping Node at "ip"
 	 * 
-	 * @param ip
-	 *            IP to ping
+	 * @param ip IP to ping
 	 * @return Latency, in MS
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -150,7 +148,7 @@ public final class ConnectionManager {
 		log.debug("Sent PING\nAwaiting Response..", 2);
 		if (sc.nextLine().equals("CCSERVER")) {
 			long pingTime = System.currentTimeMillis() - startTimeStamp;
-			log.debug("Got CCSERVER response, ping is "+pingTime+"ms", 2);
+			log.debug("Got CCSERVER response, ping is " + pingTime + "ms", 2);
 			s.close();
 			sc.close();
 			return pingTime;
@@ -185,7 +183,7 @@ public final class ConnectionManager {
 				String in = sc.nextLine();
 				if (in.equals("CCSERVER")) {
 					// This is indeed a server, client server handshake is complete
-					Node n = new Node((Inet4Address) s.getInetAddress());
+					Node n = new Node((Inet4Address) s.getInetAddress(), false);
 					nodes.add(n);
 				}
 			} catch (Exception e) {
@@ -198,15 +196,15 @@ public final class ConnectionManager {
 	/**
 	 * Add a Node to use for Clustering
 	 * 
-	 * @param ip
-	 *            IP of Node
+	 * @param ip IP of Node
 	 * @return True if the node was succesfully added, false otherwise
 	 * @throws UnknownHostException
 	 * @throws IOException
 	 */
 	public boolean addNode(Inet4Address ip) throws UnknownHostException, IOException {
-		if (checkNodeAt(ip)) {
-			nodes.add(new Node(ip));
+		long ping = ping(ip);
+		if (ping != -1) {
+			nodes.add(new Node(ip, ping));
 			return true;
 		}
 		return false;
@@ -215,8 +213,7 @@ public final class ConnectionManager {
 	/**
 	 * Check to see if a Node exists at a given IP
 	 * 
-	 * @param ip
-	 *            IP of node
+	 * @param ip IP of node
 	 * @return True if a node is found, false otherwise
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -423,6 +420,7 @@ public final class ConnectionManager {
 
 			// Send type of process to server
 			pOut.println("PASSIVE");
+			log.debug("Sent PASSIVE");
 			// If Server doesn't respond correctly, close and cleanup
 			final String nextLine = sc.nextLine();
 			if (!nextLine.equals("RECEIVEDAT")) {
@@ -503,6 +501,19 @@ public final class ConnectionManager {
 			this.ip = ip;
 			s = new Socket(ip.getHostAddress(), port);
 			updatePing();
+		}
+
+		public Node(Inet4Address ip, boolean doPing) throws UnknownHostException, IOException {
+			this.ip = ip;
+			s = new Socket(ip.getHostAddress(), port);
+			if (doPing)
+				updatePing();
+		}
+
+		public Node(Inet4Address ip, long ping) throws UnknownHostException, IOException {
+			this.ip = ip;
+			s = new Socket(ip.getHostAddress(), port);
+			this.ping = ping;
 		}
 
 		@SuppressWarnings("unused")
