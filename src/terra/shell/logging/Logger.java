@@ -174,7 +174,7 @@ public class Logger {
 	 */
 	public void debug(String s, PrintStream out) {
 		if (LogManager.debug()) {
-			log("[DEBUG] " + s + " :" + LocalDateTime.now().getHour() + ":" + LocalDateTime.now().getMinute() + ":"
+			log("[DEBUG] " + s + " @:" + LocalDateTime.now().getHour() + ":" + LocalDateTime.now().getMinute() + ":"
 					+ LocalDateTime.now().getSecond(), out);
 		}
 

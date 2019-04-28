@@ -142,6 +142,7 @@ public final class ConnectionManager {
 		log.debug("Pinging: " + s.getInetAddress().getHostAddress());
 		PrintStream out = new PrintStream(s.getOutputStream());
 		Scanner sc = new Scanner(s.getInputStream());
+		completeHandshake(sc, out);
 
 		long startTimeStamp = System.currentTimeMillis();
 		out.println("PING");
@@ -222,6 +223,14 @@ public final class ConnectionManager {
 		return (ping(ip) != -1);
 	}
 
+	private void completeHandshake(Scanner sc, PrintStream out) {
+		log.debug("Starting Handshake");
+		while (!sc.hasNextLine())
+			out.println("READY");
+		sc.nextLine();
+		log.debug("Handshake complete");
+	}
+
 	/**
 	 * Local Cluster Node server implementation
 	 * 
@@ -272,6 +281,8 @@ public final class ConnectionManager {
 			// - Ping
 			// - Passive Cluster
 			// - Active Cluster
+			completeHandshake(sc, out);
+
 			String in = sc.nextLine();
 			// Check if PING is sent
 			if (in.equals("PING")) {
@@ -417,6 +428,8 @@ public final class ConnectionManager {
 			Socket s = new Socket(ip.getHostAddress(), port);
 			Scanner sc = new Scanner(s.getInputStream());
 			PrintStream pOut = new PrintStream(s.getOutputStream());
+
+			completeHandshake(sc, pOut);
 
 			// Send type of process to server
 			pOut.println("PASSIVE");
