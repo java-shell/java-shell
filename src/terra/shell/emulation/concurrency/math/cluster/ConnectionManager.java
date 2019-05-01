@@ -31,7 +31,7 @@ public final class ConnectionManager {
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
 	private int port = 2100, activeProcessLimit = 20, passiveProcessLimit = 10, connectionLimit = 5, ipScanRangeMin = 1,
-			ipScanRangeMax = 253;
+			ipScanRangeMax = 253, handshakeTimeout = 1000;
 
 	// TODO
 	// Finish setting up defaults
@@ -57,6 +57,7 @@ public final class ConnectionManager {
 			conf.setValue("connectionLimit", 5);
 			conf.setValue("ipScanRangeMin", 1);
 			conf.setValue("ipScanRangeMax", 253);
+			conf.setValue("handshakeTimeout", 1000);
 			// TODO Finish setting up Default values
 		} else {
 			// If conf exists, gather configuration options
@@ -66,6 +67,7 @@ public final class ConnectionManager {
 			activeProcessLimit = conf.getValueAsInt("activeProcessLimit");
 			passiveProcessLimit = conf.getValueAsInt("passiveProcessLimit");
 			connectionLimit = conf.getValueAsInt("connectionLimit");
+			handshakeTimeout = conf.getValueAsInt("handshakeTimeout");
 
 			int ipScanMin = conf.getValueAsInt("ipScanRangeMin");
 			int ipScanMax = conf.getValueAsInt("ipScanRangeMax");
@@ -97,7 +99,8 @@ public final class ConnectionManager {
 	/**
 	 * Queue a JProcess to be serialized and sent to another Node for processing
 	 * 
-	 * @param p   JProcess to be sent
+	 * @param p
+	 *            JProcess to be sent
 	 * @param out
 	 * @param in
 	 * @return True if process is succesfully queued, false otherwise
@@ -115,7 +118,8 @@ public final class ConnectionManager {
 	/**
 	 * Ping Node at "ip"
 	 * 
-	 * @param ip IP to ping
+	 * @param ip
+	 *            IP to ping
 	 * @return Latency, in MS
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -142,7 +146,13 @@ public final class ConnectionManager {
 		log.debug("Pinging: " + s.getInetAddress().getHostAddress());
 		PrintStream out = new PrintStream(s.getOutputStream());
 		Scanner sc = new Scanner(s.getInputStream());
-		completeHandshake(sc, out);
+
+		if (!completeHandshake(sc, out)) {
+			sc.close();
+			out.close();
+			s.close();
+			return -1;
+		}
 
 		long startTimeStamp = System.currentTimeMillis();
 		out.println("PING");
@@ -197,7 +207,8 @@ public final class ConnectionManager {
 	/**
 	 * Add a Node to use for Clustering
 	 * 
-	 * @param ip IP of Node
+	 * @param ip
+	 *            IP of Node
 	 * @return True if the node was succesfully added, false otherwise
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -214,7 +225,8 @@ public final class ConnectionManager {
 	/**
 	 * Check to see if a Node exists at a given IP
 	 * 
-	 * @param ip IP of node
+	 * @param ip
+	 *            IP of node
 	 * @return True if a node is found, false otherwise
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -223,12 +235,27 @@ public final class ConnectionManager {
 		return (ping(ip) != -1);
 	}
 
-	private void completeHandshake(Scanner sc, PrintStream out) {
+	/**
+	 * Complete handshake between a pair in order to sync the two
+	 * 
+	 * @param sc
+	 *            Scanner of the remote socket
+	 * @param out
+	 *            PrintStream of the remote socket
+	 */
+	private boolean completeHandshake(Scanner sc, PrintStream out) {
 		log.debug("Starting Handshake");
-		while (!sc.hasNextLine())
+		long timeStamp = System.currentTimeMillis();
+		while (!sc.hasNextLine()) {
 			out.println("READY");
+			if (System.currentTimeMillis() - timeStamp > handshakeTimeout) {
+				log.log("Handshake timeout");
+				return false;
+			}
+		}
 		sc.nextLine();
 		log.debug("Handshake complete");
+		return true;
 	}
 
 	/**

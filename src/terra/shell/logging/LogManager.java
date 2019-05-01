@@ -67,7 +67,12 @@ public class LogManager {
 		logNames.remove(l.getName());
 	}
 
-	public static boolean debug() {
+	/**
+	 * Gets whether or not debugging is enabled
+	 * 
+	 * @return True if debugging is enabled
+	 */
+	public static boolean doDebug() {
 		if (debug == -1) {
 			log.log("Value for \"debug\" in launch conf not found, temporarily assigning the value of true");
 			debug = 1;
@@ -79,6 +84,12 @@ public class LogManager {
 		}
 	}
 
+	/**
+	 * Sets whether or not debugging is enabled
+	 * 
+	 * @param debugValue
+	 *            True to enable debugging
+	 */
 	public static void setDebug(boolean debugValue) {
 		if (debugValue)
 			debug = 1;

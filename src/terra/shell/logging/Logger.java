@@ -23,8 +23,10 @@ public class Logger {
 	/**
 	 * Create a Logger with this numerical ID and Display Name
 	 * 
-	 * @param name Display Name
-	 * @param id   Numerical ID
+	 * @param name
+	 *            Display Name
+	 * @param id
+	 *            Numerical ID
 	 */
 	public Logger(String name, int id, boolean useOut) {
 		this.useOut = useOut;
@@ -41,8 +43,9 @@ public class Logger {
 	 * Specify whether or not to use an OutputStream or to use the LogManager.write
 	 * function
 	 * 
-	 * @param useOut Whether or not to use an OutputStream (True) or
-	 *               LogManager.write (False) Default: False
+	 * @param useOut
+	 *            Whether or not to use an OutputStream (True) or LogManager.write
+	 *            (False) Default: False
 	 */
 	public void useOut(boolean useOut) {
 		this.useOut = useOut;
@@ -52,7 +55,8 @@ public class Logger {
 	 * Create a Logger with this numerical ID, the ID will be used as the Display
 	 * Name
 	 * 
-	 * @param id Numerical ID
+	 * @param id
+	 *            Numerical ID
 	 */
 	public Logger(int id, boolean useOut) {
 		this.useOut = useOut;
@@ -64,7 +68,8 @@ public class Logger {
 	 * Write a String out to the current OutputStream. This String will be checked
 	 * for variables within the String unless otherwise specified.
 	 * 
-	 * @param s String to write.
+	 * @param s
+	 *            String to write.
 	 */
 	public void log(String s) {
 		final String[] tmp = chkVar(s);
@@ -76,7 +81,8 @@ public class Logger {
 	 * Write an array of Strings out to the current OutputStream. This Array will be
 	 * checked for variables within itself unless otherwise specified.
 	 * 
-	 * @param s Array Of String to be written.
+	 * @param s
+	 *            Array Of String to be written.
 	 */
 	public void log(String[] s) {
 		// print("[" + name + "]");
@@ -119,8 +125,10 @@ public class Logger {
 	/**
 	 * Write out to this Stream temporarily. Only one line will be written here
 	 * 
-	 * @param s   String to be written.
-	 * @param out PrintStream to write out to.
+	 * @param s
+	 *            String to be written.
+	 * @param out
+	 *            PrintStream to write out to.
 	 */
 	public void log(String s, PrintStream out) {
 		out.print("[" + name + "] " + s + "\n");
@@ -129,7 +137,8 @@ public class Logger {
 	/**
 	 * Print this String without ending the line, and without any Display Name.
 	 * 
-	 * @param s String to be written.
+	 * @param s
+	 *            String to be written.
 	 */
 	public void print(String s) {
 		if (useOut) {
@@ -142,7 +151,8 @@ public class Logger {
 	/**
 	 * Write an Error, this goes to System.err.
 	 * 
-	 * @param s String to be written.
+	 * @param s
+	 *            String to be written.
 	 */
 	public void err(String s) {
 		System.err.print("[" + name + "] " + s + "\n");
@@ -160,7 +170,8 @@ public class Logger {
 	/**
 	 * Debug stream, only prints if "debug" is marked true in launch configuration
 	 * 
-	 * @param s String to be written
+	 * @param s
+	 *            String to be written
 	 */
 	public void debug(String s) {
 		debug(s, out);
@@ -169,11 +180,13 @@ public class Logger {
 	/**
 	 * Debug stream, only prints if "debug" is marked true in launch configuration
 	 * 
-	 * @param s   String to be written
-	 * @param out Stream to write to
+	 * @param s
+	 *            String to be written
+	 * @param out
+	 *            Stream to write to
 	 */
 	public void debug(String s, PrintStream out) {
-		if (LogManager.debug()) {
+		if (LogManager.doDebug()) {
 			log("[DEBUG] " + s + " @:" + LocalDateTime.now().getHour() + ":" + LocalDateTime.now().getMinute() + ":"
 					+ LocalDateTime.now().getSecond(), out);
 		}
@@ -228,12 +241,22 @@ public class Logger {
 	/**
 	 * Change the current OutputStream.
 	 * 
-	 * @param out The OutputStream to be written to.
+	 * @param out
+	 *            The OutputStream to be written to.
 	 */
 	public void setOutputStream(OutputStream out) {
 		this.out = new PrintStream(out);
 	}
 
+	/**
+	 * Replace all variable declarations within a String with their value
+	 * counterparts
+	 * 
+	 * @param in
+	 *            String to be evaluated
+	 * @return An Array of Strings representing the newly formed line including all
+	 *         variable values
+	 */
 	private String[] chkVar(String in) {
 		if (filter) {
 			String[] args = in.split("\\ ");
@@ -250,6 +273,15 @@ public class Logger {
 		return in.split("\\ ");
 	}
 
+	/**
+	 * Replace all variable declarations within a String with their value
+	 * counterparts
+	 * 
+	 * @param args
+	 *            An Array of Strings to be checked for variables
+	 * @return An Array of Strings representing the newly formed line including all
+	 *         variable values
+	 */
 	private String[] chkVar(String[] args) {
 		if (filter) {
 			for (int i = 0; i < args.length; i++) {

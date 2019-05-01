@@ -139,11 +139,15 @@ public class Configuration {
 				ret = Integer.parseInt((String) vlist.get(id));
 				return ret;
 			} catch (Exception e) {
+				log.err("Failed to load conf value as int, " + f.getName() + ":" + id);
+				log.debug("Conf value conversion failed, message \"" + e.getMessage() + "\"");
 			}
 			try {
 				ret = (int) vlist.get(id);
 				return ret;
 			} catch (Exception e) {
+				log.err("Failed to load conf value as int, " + f.getName() + ":" + id);
+				log.debug("Conf value conversion failed, message \"" + e.getMessage() + "\"");
 			}
 		}
 		return 0;
@@ -182,6 +186,8 @@ public class Configuration {
 				for (int i = 0; i < vlist.size(); i++) {
 					fout.println(keys.toArray()[i] + ":" + vlist.get(keys.toArray()[i]));
 				}
+				fout.flush();
+				fout.close();
 			}
 			return;
 		} catch (Exception e) {

@@ -9,12 +9,22 @@ import java.util.zip.ZipFile;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 
+/**
+ * A class that allows reading and writing to and from a ZipFile as if it were a
+ * filesystem
+ * 
+ * @author schirripad@moravian.edu
+ *
+ */
 public class ZipFileSystem {
 	private static Logger log = LogManager.getLogger("ZF");
 	private static Hashtable<String, File> fbyname = new Hashtable<String, File>();
 	private static ArrayList<String> fnames = new ArrayList<String>();
 	public final static File top = new File("u", true);
 
+	/**
+	 * Read the files within the ZipFile, and store them into a DataStructure
+	 */
 	public static void readFiles() {
 		try {
 			log.log("Reading File Zip");
@@ -44,10 +54,20 @@ public class ZipFileSystem {
 		}
 	}
 
+	/**
+	 * Add a file to the ZipFile
+	 */
 	public static void addFile() {
 
 	}
 
+	/**
+	 * List all the files within a specific ZipFile
+	 * 
+	 * @param d
+	 *            The File within the ZipFile that is being read from as a directory
+	 * @return A list of Files found under the parent directory 'd'
+	 */
 	public static File[] listFiles(File d) {
 		final String tot = d.getPath();
 		log.log(tot);
@@ -83,6 +103,14 @@ public class ZipFileSystem {
 		return f;
 	}
 
+	/**
+	 * Get a file represented by a String location within the ZipFile
+	 * 
+	 * @param fn
+	 *            The String path to use to find the File
+	 * @return The File representing the data stored in the ZipFile at the location
+	 *         determined by the String 'fn'
+	 */
 	public static File getFile(String fn) {
 		for (int i = 0; i < fnames.size(); i++) {
 			if (fnames.get(i).equals(fn)) {
