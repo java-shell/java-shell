@@ -245,16 +245,15 @@ public final class ConnectionManager {
 	 */
 	private boolean completeHandshake(Scanner sc, PrintStream out) {
 		log.debug("Starting Handshake");
-		long timeStamp = System.currentTimeMillis();
-		while (!sc.hasNextLine()) {
-			out.println("READY");
-			if (System.currentTimeMillis() - timeStamp > handshakeTimeout) {
-				log.log("Handshake timeout");
-				return false;
-			}
-		}
-		sc.nextLine();
-		log.debug("Handshake complete");
+		// long timeStamp = System.currentTimeMillis();
+		out.println("READY");
+		/*
+		 * while (!sc.hasNextLine()) { out.println("READY"); if
+		 * (System.currentTimeMillis() - timeStamp > handshakeTimeout) {
+		 * log.log("Handshake timeout"); return false; } }
+		 */
+		String s = sc.nextLine();
+		log.debug("Handshake complete: " + s);
 		return true;
 	}
 
@@ -276,8 +275,18 @@ public final class ConnectionManager {
 				public void run() {
 					while (!ss.isClosed()) {
 						try {
-							Socket s = ss.accept();
-							handleClient(s);
+							final Socket s = ss.accept();
+							Thread t = new Thread(new Runnable() {
+								public void run() {
+									try {
+										handleClient(s);
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+							});
+							t.setName(s.toString());
+							t.start();
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
