@@ -1,6 +1,5 @@
 package terra.shell.command;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,7 +20,7 @@ public abstract class Command extends JProcess {
 	private static final long serialVersionUID = 7560604411365272984L;
 	protected String[] args;
 	protected List<String> largs;
-	protected Terminal term;
+	protected transient Terminal term;
 
 	/**
 	 * @author schirripad@morvian.edu

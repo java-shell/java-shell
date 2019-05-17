@@ -25,30 +25,32 @@ import terra.shell.utils.system.JSHProcesses;
 public abstract class JProcess implements Serializable {
 
 	private static final long serialVersionUID = -4944113269698016157L;
-	private boolean stop, isGoing = true, suspend;
-	private transient Thread t;
+	private transient boolean stop, isGoing = true, suspend;
+	private transient Thread t = null;
 	private UUID u;
 	private boolean uuidset;
-	protected transient Logger log = LogManager.getLogger(getName());
+	protected transient Logger log = null;
 	private JProcess me = this;
-	private transient InputStream s = System.in;
-	protected transient Scanner sc = new Scanner(s);
+	private transient InputStream s = null;
+	protected transient Scanner sc = null;
 	protected boolean canBeSerialized = false;
+
+	public JProcess() {
+		init();
+	}
+
+	private void init() {
+		s = System.in;
+		sc = new Scanner(s);
+		log = LogManager.getLogger(getName());
+	}
 
 	/**
 	 * Used for re-initialization of I/O after De-Serialization process, also marks
 	 * the process as being foreign
 	 */
 	public void reInitialize() {
-		if (log == null) {
-			log = LogManager.getLogger(getName());
-		}
-		if (s == null) {
-			s = System.in;
-		}
-		if (sc == null) {
-			sc = new Scanner(s);
-		}
+		init();
 	}
 
 	/**
