@@ -27,10 +27,10 @@ public abstract class JProcess implements Serializable {
 	private static final long serialVersionUID = -4944113269698016157L;
 	private transient boolean stop, isGoing = true, suspend;
 	private transient Thread t = null;
-	private UUID u;
-	private boolean uuidset;
+	private transient UUID u;
+	private transient boolean uuidset;
 	protected transient Logger log = null;
-	private JProcess me = this;
+	private transient JProcess me = this;
 	private transient InputStream s = null;
 	protected transient Scanner sc = null;
 	protected boolean canBeSerialized = false;
