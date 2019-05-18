@@ -480,6 +480,9 @@ public final class ConnectionManager {
 				return false;
 			}
 
+			p.stop();
+			p.prepSerialization();
+
 			// Serialize process
 			log.debug("Serializing Process...");
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();

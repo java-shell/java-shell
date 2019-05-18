@@ -53,6 +53,10 @@ public abstract class JProcess implements Serializable {
 		init();
 	}
 
+	public void prepSerialization() {
+		log = null;
+	}
+
 	/**
 	 * Get the name, in text, of this process as specified by the process.
 	 * 
@@ -73,6 +77,8 @@ public abstract class JProcess implements Serializable {
 	 * thread within the process of its imminent disposal.
 	 */
 	public final void stop() {
+		if (t == null)
+			return;
 		t.interrupt(); // TODO Auto-generated method stub
 
 		// stop = true;
@@ -85,6 +91,8 @@ public abstract class JProcess implements Serializable {
 	 * disposal.
 	 */
 	public void halt() {
+		if (t == null)
+			return;
 		t.stop();
 		if (sc != null)
 			sc.close();

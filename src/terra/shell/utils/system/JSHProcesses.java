@@ -11,9 +11,9 @@ import terra.shell.utils.JProcess;
 /**
  * <h1>Process Management Class</h1>
  * <p>
- * This class is the process management interface for all running processes
- * within JSH. Any JProcess or extension of a JProcess should be routed through
- * this class to allow for System management of processes
+ * This class is the process management interface for all processes within JSH.
+ * Any JProcess or extension of a JProcess should be routed through this class
+ * to allow for System management of processes
  */
 public class JSHProcesses {
 	private static Hashtable<String, JProcess> processes = new Hashtable<String, JProcess>();
