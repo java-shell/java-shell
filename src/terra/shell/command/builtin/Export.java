@@ -1,4 +1,5 @@
 package terra.shell.command.builtin;
+
 import java.util.ArrayList;
 import java.util.Enumeration;
 
@@ -60,17 +61,17 @@ public class Export extends Command {
 					Variables.setVar(new GeneralVariable(args[1], args[2]));
 					return true;
 				} else {
-					log.log("Invalid Args!");
+					getLogger().log("Invalid Args!");
 					return false;
 				}
 			}
-			log.log("Invalid Arguments!");
+			getLogger().log("Invalid Arguments!");
 			return false;
 		}
 		final Enumeration<Variable> e = Variables.getVars();
 		while (e.hasMoreElements()) {
 			final Variable tmp = e.nextElement();
-			log.log(tmp.getVarName() + ": " + tmp.getVarValue());
+			getLogger().log(tmp.getVarName() + ": " + tmp.getVarValue());
 		}
 		return true;
 	}

@@ -1,4 +1,5 @@
 package terra.shell.command.builtin;
+
 import java.util.ArrayList;
 import java.util.Enumeration;
 
@@ -6,8 +7,7 @@ import terra.shell.command.Command;
 import terra.shell.modules.ModuleManagement;
 import terra.shell.utils.perms.Permissions;
 
-
-public class ModuleList extends Command{
+public class ModuleList extends Command {
 
 	/**
 	 * 
@@ -43,11 +43,11 @@ public class ModuleList extends Command{
 	public boolean start() {
 		Enumeration<String> e = ModuleManagement.getModules();
 		int num = 0;
-		while(e.hasMoreElements()){
-			log.log(e.nextElement());
+		while (e.hasMoreElements()) {
+			getLogger().log(e.nextElement());
 			num++;
 		}
-		log.log("Total modules: "+num);
+		getLogger().log("Total modules: " + num);
 		stop();
 		stop();
 		return true;

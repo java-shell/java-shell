@@ -60,7 +60,7 @@ public class GarbageCollection extends Command {
 		long old = Runtime.getRuntime().freeMemory();
 		System.runFinalization();
 		System.gc();
-		log.log("Cleared " + (Runtime.getRuntime().freeMemory() - old) + " bytes of memory");
+		getLogger().log("Cleared " + (Runtime.getRuntime().freeMemory() - old) + " bytes of memory");
 		return true;
 	}
 

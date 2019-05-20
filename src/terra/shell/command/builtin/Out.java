@@ -1,4 +1,5 @@
 package terra.shell.command.builtin;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
@@ -59,7 +60,7 @@ public class Out extends Command {
 			PrintWriter out = null;
 			try {
 				if (f.exists()) {
-					log.log("File Exists! Overwrite? (Y,N)");
+					getLogger().log("File Exists! Overwrite? (Y,N)");
 					String answer = sc.nextLine();
 					if (answer.equalsIgnoreCase("n")) {
 						return true;
@@ -71,7 +72,7 @@ public class Out extends Command {
 				e.printStackTrace();
 				return false;
 			}
-			log.log("To end file, type /:quit");
+			getLogger().log("To end file, type /:quit");
 			if (args.length > 1) {
 				for (int i = 1; i < args.length; i++) {
 					out.println(args[i]);
@@ -79,7 +80,7 @@ public class Out extends Command {
 				}
 			} else {
 				int ln = 0;
-				log.print(ln + ": ");
+				getLogger().print(ln + ": ");
 				while (sc.hasNextLine()) {
 					final String tmp = sc.nextLine();
 					if (tmp.equals("/:quit")) {
@@ -87,12 +88,12 @@ public class Out extends Command {
 					}
 					out.println(tmp);
 					ln++;
-					log.print(ln + ": ");
+					getLogger().print(ln + ": ");
 				}
 				return true;
 			}
 		} else {
-			log.log("Not Enough Arguments! What do you think I am? A mind reader?");
+			getLogger().log("Not Enough Arguments! What do you think I am? A mind reader?");
 		}
 		return false;
 	}

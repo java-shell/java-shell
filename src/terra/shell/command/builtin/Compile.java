@@ -58,36 +58,36 @@ public class Compile extends Command {
 	@Override
 	public boolean start() {
 		if (args.length < 1) {
-			log.log("Not Enough Arguments!");
+			getLogger().log("Not Enough Arguments!");
 			return false;
 		} else {
 			if (args.length == 1) {
 				if (args[0].equals("usage") || args[0].equals("help")) {
-					log.log("Usage: compile <compFile> <outDir>");
+					getLogger().log("Usage: compile <compFile> <outDir>");
 				}
 			} else if (args.length == 2) {
 				// final String type = args[0];
 				final File comp = new File(args[0]);
 				final File odir = new File(args[1]);
 				if (comp.exists() && odir.exists() & odir.isDirectory()) {
-					log.log("Compiling .tx from classlist-(Compilation File)");
+					getLogger().log("Compiling .tx from classlist-(Compilation File)");
 					try {
 						final Scanner sc = new Scanner(new FileInputStream(comp));
 						final ArrayList<String> classes = new ArrayList<String>();
 						while (sc.hasNextLine()) {
 							classes.add(sc.nextLine());
 						}
-						log.log("Isolating Main...");
+						getLogger().log("Isolating Main...");
 						final String packagen = classes.get(0);
 						final File main = new File(classes.get(1));
 						final File[] peripherals = new File[classes.size() - 2];
-						log.log("Loading peripheral resource classes...");
+						getLogger().log("Loading peripheral resource classes...");
 						for (int i = 2; i < classes.size(); i++) {
 							peripherals[i - 2] = new File(classes.get(i));
 						}
-						log.log("Building file...");
+						getLogger().log("Building file...");
 						ArrayList<Byte> file = new ArrayList<Byte>();
-						log.log("Constructing header...");
+						getLogger().log("Constructing header...");
 						// Add File Start
 						file.add((byte) 52);
 						// Add Header Start
@@ -98,9 +98,9 @@ public class Compile extends Command {
 						}
 						// Add Header End
 						file.add((byte) 47);
-						log.log("Creating class structure...");
-						log.log("Adding main class...  [" + main.getName() + "]");
-						log.log("Creating class header...");
+						getLogger().log("Creating class structure...");
+						getLogger().log("Adding main class...  [" + main.getName() + "]");
+						getLogger().log("Creating class header...");
 						String cname = main.getName().substring(0, main.getName().length() - 6);
 						// Embed Class Length in Name
 						cname = cname + ":" + main.length();
@@ -115,7 +115,7 @@ public class Compile extends Command {
 						}
 						// Add Class Header End
 						file.add((byte) 47);
-						log.log("Embedding class...");
+						getLogger().log("Embedding class...");
 						BufferedInputStream in = new BufferedInputStream(new FileInputStream(main));
 						int b;
 						// Add Class Bytes
@@ -123,8 +123,8 @@ public class Compile extends Command {
 							file.add((byte) b);
 						}
 						for (int i = 0; i < peripherals.length; i++) {
-							log.log("Adding peripheral resource class... [" + peripherals[i].getName() + "]");
-							log.log("Creating class header...");
+							getLogger().log("Adding peripheral resource class... [" + peripherals[i].getName() + "]");
+							getLogger().log("Creating class header...");
 							String cname1 = peripherals[i].getName().substring(0,
 									peripherals[i].getName().length() - 6);
 							// Embed Class Length in Name
@@ -140,7 +140,7 @@ public class Compile extends Command {
 							}
 							// Add Class Header End
 							file.add((byte) 47);
-							log.log("Embedding class...");
+							getLogger().log("Embedding class...");
 							in = new BufferedInputStream(new FileInputStream(peripherals[i]));
 							int b1;
 							// Add Class Bytes
@@ -148,13 +148,13 @@ public class Compile extends Command {
 								file.add((byte) b1);
 							}
 						}
-						log.log("Closing File...");
+						getLogger().log("Closing File...");
 						// Close File
 						file.add((byte) 49);
 						in = null;
 
 						// Generate MD5
-						log.log("Generating MD5");
+						getLogger().log("Generating MD5");
 
 						MessageDigest md = MessageDigest.getInstance("MD5");
 						for (byte b0 : file) {
@@ -186,33 +186,33 @@ public class Compile extends Command {
 							file.add(md5Length.length + 2, md5Encode[i]);
 						}
 
-						log.log("Writing File...");
+						getLogger().log("Writing File...");
 						BufferedOutputStream bout = new BufferedOutputStream(
 								new FileOutputStream(new File(odir.getAbsolutePath() + "/out.tx")));
 						for (int i = 0; i < file.size(); i++) {
 							bout.write(file.get(i));
 						}
 
-						log.log("Cleaning up...");
+						getLogger().log("Cleaning up...");
 						bout.flush();
 						bout.close();
 						bout = null;
 						return true;
 					} catch (Exception e) {
 						e.printStackTrace();
-						log.log("Compilation terminated! FAILURE");
+						getLogger().log("Compilation terminated! FAILURE");
 					}
 				} else {
 					if (!comp.exists()) {
-						log.log("Class List not found!");
+						getLogger().log("Class List not found!");
 					}
 					if (!odir.exists() || !odir.isDirectory()) {
-						log.log("Output Directory not found!");
+						getLogger().log("Output Directory not found!");
 					}
 				}
 
 			} else {
-				log.log("Too Many Arguments!");
+				getLogger().log("Too Many Arguments!");
 			}
 		}
 

@@ -67,7 +67,7 @@ public class Login extends Command {
 
 	@Override
 	public void halt() {
-		// log.log("You can't halt a Login!");
+		// getLogger().log("You can't halt a Login!");
 		return;
 	}
 
@@ -76,7 +76,7 @@ public class Login extends Command {
 
 	@Override
 	public boolean start() {
-		log.setOutputStream(term.getGOutputStream());
+		getLogger().setOutputStream(term.getGOutputStream());
 
 		Configuration conf = Launch.getConfig("uinf");
 		final File cnf = new File(Launch.getConfD() + "/uinf");
@@ -87,8 +87,8 @@ public class Login extends Command {
 				fst = true;
 				newconf = true;
 			} catch (Exception e) {
-				e.printStackTrace(new PrintStream(log.getOutputStream()));
-				log.log("Unable to obtain system credentials or create new Configuration for System Credentials");
+				e.printStackTrace(new PrintStream(getLogger().getOutputStream()));
+				getLogger().log("Unable to obtain system credentials or create new Configuration for System Credentials");
 				while (true)
 					;
 			}
@@ -98,10 +98,10 @@ public class Login extends Command {
 		try {
 			RandomAccessFile raf = new RandomAccessFile(cnf, "rw");
 			raf.getChannel().lock();
-			log.log("\"uinf\" locked successfully");
+			getLogger().log("\"uinf\" locked successfully");
 		} catch (Exception e) {
-			log.log("Failed to get file lock on uinf");
-			log.err("FAILED TO GET FILE LOCK ON \"uinf\", user login information is susceptible to tampering");
+			getLogger().log("Failed to get file lock on uinf");
+			getLogger().err("FAILED TO GET FILE LOCK ON \"uinf\", user login information is susceptible to tampering");
 		}
 		// TODO Lock cnf to prevent manipulation
 		// TODO Create MD5 or other Hash file alongside to prevent modification of cnf when
@@ -113,28 +113,28 @@ public class Login extends Command {
 				boolean nDone = false;
 				while (nDone == false) {
 					final Scanner sc = new Scanner(term.getGInputStream());
-					log.log("First time use, please enter Username and Password");
-					log.print("Username:");
+					getLogger().log("First time use, please enter Username and Password");
+					getLogger().print("Username:");
 					user = sc.next();
-					log.endln();
-					log.print("Password:");
+					getLogger().endln();
+					getLogger().print("Password:");
 					pwd = sc.next();
-					log.endln();
-					log.log("Please confirm password");
+					getLogger().endln();
+					getLogger().log("Please confirm password");
 					String cpwd = sc.next();
-					log.endln();
+					getLogger().endln();
 					if (!cpwd.equals(pwd)) {
-						log.log("Passwords do not match");
+						getLogger().log("Passwords do not match");
 						nDone = false;
 						continue;
 					}
-					log.log("Please confirm credentials:");
-					log.log("Username: " + user);
-					log.log("Correct? [y/n]");
-					// log.log("Password: " + pwd);
+					getLogger().log("Please confirm credentials:");
+					getLogger().log("Username: " + user);
+					getLogger().log("Correct? [y/n]");
+					// getLogger().log("Password: " + pwd);
 					if (sc.next().equalsIgnoreCase("y")) {
 						nDone = true;
-						log.clear();
+						getLogger().clear();
 					}
 				}
 			}
@@ -155,18 +155,18 @@ public class Login extends Command {
 		for (int i = 0; i < pass.length; i++) {
 			pas[i] = PasswordEncoder.parseByte(Byte.parseByte(pass[i]));
 		}
-		log.endln();
+		getLogger().endln();
 
 		BufferedInputStream bin = new BufferedInputStream(term.getGInputStream());
 		Thread mask = new Thread(new Runnable() {
 			public void run() {
 				run = true;
 				while (run) {
-					log.print("\010" + "*");
+					getLogger().print("\010" + "*");
 					try {
 						Thread.sleep(2);
 					} catch (Exception e) {
-						log.log("Warning: Password masking failed! Your password is visible!");
+						getLogger().log("Warning: Password masking failed! Your password is visible!");
 						run = false;
 						return;
 					}
@@ -175,8 +175,8 @@ public class Login extends Command {
 			}
 		});
 		mask.setPriority(Thread.MAX_PRIORITY);
-		log.log("Please enter username:");
-		log.print(">");
+		getLogger().log("Please enter username:");
+		getLogger().print(">");
 		mask.start();
 		int b, am = 0;
 		char[] u = new char[15];
@@ -190,11 +190,11 @@ public class Login extends Command {
 				public void run() {
 					run = true;
 					while (run) {
-						log.print("\010" + "*");
+						getLogger().print("\010" + "*");
 						try {
 							Thread.sleep(2);
 						} catch (Exception e) {
-							log.log("Warning: Password masking failed! Your password is visible!");
+							getLogger().log("Warning: Password masking failed! Your password is visible!");
 							run = false;
 							return;
 						}
@@ -202,8 +202,8 @@ public class Login extends Command {
 					return;
 				}
 			});
-			log.log("Please enter password:");
-			log.print(">");
+			getLogger().log("Please enter password:");
+			getLogger().print(">");
 			char[] p = new char[15];
 			am = 0;
 			mask.start();
@@ -215,16 +215,16 @@ public class Login extends Command {
 			// TODO Analyze and accept/reject user
 			final String us = new String(u);
 			if (us.equals(un)) {
-				log.log("Auth Fail");
+				getLogger().log("Auth Fail");
 				start();
 			}
 			// if (p.length != pas.length) {
-			// log.log("Auth Fail l " + p.length + " " + pas.length);
+			// getLogger().log("Auth Fail l " + p.length + " " + pas.length);
 			// start();
 			// }
 			for (int i = 0; i < p.length; i++) {
 				if (p[i] != pas[i]) {
-					log.log("Auth Fail");
+					getLogger().log("Auth Fail");
 					start();
 				}
 
@@ -232,7 +232,7 @@ public class Login extends Command {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			log.log("Failed to start login!");
+			getLogger().log("Failed to start login!");
 			run = false;
 			while (true)
 				;

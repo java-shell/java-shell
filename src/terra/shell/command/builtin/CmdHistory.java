@@ -50,10 +50,10 @@ public class CmdHistory extends Command {
 	@Override
 	public boolean start() {
 		final String[][] hist = term.getHistory();
-		log.log("Command History: ");
+		getLogger().log("Command History: ");
 		for (int i = 0; i < hist.length; i++) {
-			log.print(i + ": ");
-			log.log(hist[i]);
+			getLogger().print(i + ": ");
+			getLogger().log(hist[i]);
 		}
 		return true;
 	}

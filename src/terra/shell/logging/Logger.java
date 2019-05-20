@@ -33,7 +33,7 @@ public class Logger {
 		this.id = id;
 		this.name = name + ":" + id;
 		try {
-			filter = Boolean.parseBoolean(Variables.getVarValue("Log.filter"));
+			filter = Boolean.parseBoolean(Variables.getVarValue("log.filter"));
 		} catch (Exception e) {
 			filter = true;
 		}

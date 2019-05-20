@@ -1,4 +1,5 @@
 package terra.shell.command.builtin;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -61,31 +62,29 @@ public class Copy extends Command {
 	@Override
 	public boolean start() {
 		if (args.length != 2) {
-			log.log("Not enough arguments! \nUsage cp <src> <dest>");
+			getLogger().log("Not enough arguments! \nUsage cp <src> <dest>");
 			return true;
 		}
 		File f = new File(args[0]);
 		if (!f.exists()) {
-			log.log("File not found!");
+			getLogger().log("File not found!");
 			return false;
 		}
 		File f2 = new File(args[1]);
 		try {
-			BufferedInputStream bin = new BufferedInputStream(
-					new FileInputStream(f));
-			BufferedOutputStream bout = new BufferedOutputStream(
-					new FileOutputStream(f2, false));
+			BufferedInputStream bin = new BufferedInputStream(new FileInputStream(f));
+			BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(f2, false));
 			int h = 0;
 			int ct = 0;
 			int p = 0;
-			log.print("0%");
+			getLogger().print("0%");
 			while ((h = bin.read()) != -1) {
 				ct++;
 				p = (int) (ct / (f.length()));
 				if (p >= 10) {
-					log.print("\010\010\010" + p + "%");
+					getLogger().print("\010\010\010" + p + "%");
 				} else {
-					log.print("\010\010" + p + "%");
+					getLogger().print("\010\010" + p + "%");
 				}
 				bout.write(h);
 			}
@@ -96,10 +95,10 @@ public class Copy extends Command {
 			bout = null;
 			f = null;
 			f2 = null;
-			log.log("File copy complete!");
+			getLogger().log("File copy complete!");
 			return true;
 		} catch (Exception e) {
-			log.log("Copy failed! " + e.getMessage());
+			getLogger().log("Copy failed! " + e.getMessage());
 		}
 		return false;
 	}

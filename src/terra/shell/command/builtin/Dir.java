@@ -1,4 +1,5 @@
 package terra.shell.command.builtin;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -73,8 +74,8 @@ public class Dir extends Command {
 		} else {
 			print(f, full, false, len);
 		}
-		log.endln();
-		log.log("Finished");
+		getLogger().endln();
+		getLogger().log("Finished");
 		return true;
 	}
 
@@ -94,18 +95,18 @@ public class Dir extends Command {
 			if (f.length > 9 && iterate) {
 				int ct = 0;
 				Scanner sc = new Scanner(term.getGInputStream());
-				log.log("Type \"q\" in order to stop");
+				getLogger().log("Type \"q\" in order to stop");
 				while (true) {
 					if (sc.nextLine().equals("q"))
 						break;
 					if (full) {
 						if (ct < f.length) {
-							log.log(f[ct].getAbsolutePath());
+							getLogger().log(f[ct].getAbsolutePath());
 						} else
 							break;
 					} else {
 						if (ct < f.length) {
-							log.log(f[ct].getName());
+							getLogger().log(f[ct].getName());
 						} else
 							break;
 					}
@@ -123,14 +124,14 @@ public class Dir extends Command {
 					char[] c = d.getAbsolutePath().toCharArray();
 					for (int i = 0; i < longest; i++) {
 						if (i >= c.length) {
-							log.print(" ");
+							getLogger().print(" ");
 						} else {
-							log.print("" + c[i]);
+							getLogger().print("" + c[i]);
 						}
 					}
-					log.print(" | ");
+					getLogger().print(" | ");
 					if (index == 3) {
-						log.print("\n");
+						getLogger().print("\n");
 						index = 0;
 					}
 					index++;
@@ -140,31 +141,29 @@ public class Dir extends Command {
 					char[] c = d.getName().toCharArray();
 					for (int i = 0; i < longest; i++) {
 						if (i >= c.length) {
-							log.print(" ");
+							getLogger().print(" ");
 						} else {
-							log.print("" + c[i]);
+							getLogger().print("" + c[i]);
 						}
 					}
-					log.print(" | ");
+					getLogger().print(" | ");
 					if (index == 3) {
-						log.print("\n");
+						getLogger().print("\n");
 						index = 0;
 					}
 					index++;
 				}
 
 			/*
-			 * for (int i = 0; i < f.length; i++) { /* if (index != 3) {
-			 * index++; if (full) { if (f[i].isDirectory())
-			 * log.print(f[i].getAbsolutePath() + ":/d "); else
-			 * log.print(f[i].getAbsolutePath() + " "); } else { if
-			 * (f[i].isDirectory()) log.print(f[i].getName() + ":/d "); else
-			 * log.print(f[i].getName() + " "); } } else { index = 1;
-			 * log.endln(); if (full) { if (f[i].isDirectory())
-			 * log.print(f[i].getAbsolutePath() + ":/d "); else
-			 * log.print(f[i].getAbsolutePath() + " "); } else { if
-			 * (f[i].isDirectory()) log.print(f[i].getName() + ":/d "); else
-			 * log.print(f[i].getName() + " "); } } }
+			 * for (int i = 0; i < f.length; i++) { /* if (index != 3) { index++; if (full)
+			 * { if (f[i].isDirectory()) getLogger().print(f[i].getAbsolutePath() + ":/d ");
+			 * else getLogger().print(f[i].getAbsolutePath() + " "); } else { if
+			 * (f[i].isDirectory()) getLogger().print(f[i].getName() + ":/d "); else
+			 * getLogger().print(f[i].getName() + " "); } } else { index = 1; getLogger().endln();
+			 * if (full) { if (f[i].isDirectory()) getLogger().print(f[i].getAbsolutePath()
+			 * + ":/d "); else getLogger().print(f[i].getAbsolutePath() + " "); } else { if
+			 * (f[i].isDirectory()) getLogger().print(f[i].getName() + ":/d "); else
+			 * getLogger().print(f[i].getName() + " "); } } }
 			 */
 		}
 	}

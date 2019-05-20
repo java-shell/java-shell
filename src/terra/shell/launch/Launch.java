@@ -198,7 +198,7 @@ public class Launch {
 		}
 
 		// CODEAT Set variables
-		Variables.setVar(new GeneralVariable("Log.filter", "true"));
+		Variables.setVar(new GeneralVariable("log.filter", "true"));
 		ModuleManagement mm = new ModuleManagement();
 		mm.start();
 		try {

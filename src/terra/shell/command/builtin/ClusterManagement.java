@@ -67,38 +67,38 @@ public class ClusterManagement extends BasicCommand {
 		// Check Node Load
 		if (hasArgument("add")) {
 			String ip = getArg(getArgIndex("add", true) + 1);
-			log.log("Adding Node: " + ip);
+			getLogger().log("Adding Node: " + ip);
 			try {
 				InetAddress ip4 = InetAddress.getByName(ip);
 				Launch.getConnectionMan().addNode((Inet4Address) ip4);
-				log.log("Node Added");
+				getLogger().log("Node Added");
 				return true;
 			} catch (UnknownHostException e) {
-				log.log("Failed to add node: " + e.getMessage());
+				getLogger().log("Failed to add node: " + e.getMessage());
 				return true;
 			} catch (IOException e) {
-				log.log("Failed to add node: " + e.getMessage());
+				getLogger().log("Failed to add node: " + e.getMessage());
 				return true;
 			}
 		} else if (hasArgument("remove")) {
-			log.log("Node removal not yet implemented!");
+			getLogger().log("Node removal not yet implemented!");
 			return true;
 			// Removal of nodes not yet implemented in ConnectionManager
 		} else if (hasArgument("ping")) {
 			String ip = getArg(getArgIndex("ping", true) + 1);
 			try {
 				long ping = Launch.getConnectionMan().ping(ip);
-				log.log("Ping of " + ip + " is " + ping);
+				getLogger().log("Ping of " + ip + " is " + ping);
 				return true;
 			} catch (Exception e) {
 				e.printStackTrace();
-				log.log("Failed to ping: " + e.getMessage());
-				log.err("Failed to ping");
+				getLogger().log("Failed to ping: " + e.getMessage());
+				getLogger().err("Failed to ping");
 				return true;
 			}
 		} else if (hasArgument("checkLoad")) {
 			// Node work load check not yet implemented in ConnectionManager
-			log.log("Node work load checking not yet implemented!");
+			getLogger().log("Node work load checking not yet implemented!");
 			return true;
 		}
 		return true;

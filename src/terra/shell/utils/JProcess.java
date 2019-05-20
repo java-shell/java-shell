@@ -29,31 +29,35 @@ public abstract class JProcess implements Serializable {
 	private transient Thread t = null;
 	private transient UUID u;
 	private transient boolean uuidset;
-	protected transient Logger log = null;
+	private transient Logger log = LogManager.getLogger(getName());
 	private transient JProcess me = this;
 	private transient InputStream s = null;
 	protected transient Scanner sc = null;
-	protected boolean canBeSerialized = false;
+	private boolean canBeSerialized = false;
 
 	public JProcess() {
 		init();
 	}
 
-	private void init() {
+	private final void init() {
 		s = System.in;
 		sc = new Scanner(s);
 		log = LogManager.getLogger(getName());
+	}
+	
+	protected final Logger getLogger() {
+		return log;
 	}
 
 	/**
 	 * Used for re-initialization of I/O after De-Serialization process, also marks
 	 * the process as being foreign
 	 */
-	public void reInitialize() {
+	public final void reInitialize() {
 		init();
 	}
 
-	public void prepSerialization() {
+	public final void prepSerialization() {
 		log = null;
 	}
 
@@ -79,8 +83,7 @@ public abstract class JProcess implements Serializable {
 	public final void stop() {
 		if (t == null)
 			return;
-		t.interrupt(); // TODO Auto-generated method stub
-
+		t.interrupt();
 		// stop = true;
 	}
 
@@ -323,7 +326,7 @@ public abstract class JProcess implements Serializable {
 		suspend = !suspend;
 	}
 
-	public boolean isSuspended() {
+	public final boolean isSuspended() {
 		return suspend;
 	}
 
@@ -332,7 +335,7 @@ public abstract class JProcess implements Serializable {
 	 * 
 	 * @return
 	 */
-	public boolean canSerialize() {
+	public final boolean canSerialize() {
 		return canBeSerialized;
 	}
 

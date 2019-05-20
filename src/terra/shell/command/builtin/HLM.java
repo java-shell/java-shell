@@ -53,7 +53,7 @@ public class HLM extends Command {
 	@Override
 	public boolean start() {
 		if (args.length == 0) {
-			log.log("Not Enough Arguments");
+			getLogger().log("Not Enough Arguments");
 			return false;
 		}
 		File f;

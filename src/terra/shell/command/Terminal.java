@@ -55,7 +55,7 @@ public final class Terminal extends InteractiveObject {
 	 */
 	@Override
 	public void halt() {
-		log.log("Attempt to kill terminal has been detected, complying");
+		getLogger().log("Attempt to kill terminal has been detected, complying");
 		kill = true;
 	}
 
@@ -66,20 +66,20 @@ public final class Terminal extends InteractiveObject {
 
 	@Override
 	public boolean start() {
-		log.setOutputStream(gOut);
-		log.log("Starting terminal!");
+		getLogger().setOutputStream(gOut);
+		getLogger().log("Starting terminal!");
 		currentDir = new File("/");
 
-		log.log("Initializing input!");
+		getLogger().log("Initializing input!");
 		new Login(this).run();
 		sc = new Scanner(gIn);
 		String in;
-		log.print(currentDir.getName() + ">");
+		getLogger().print(currentDir.getName() + ">");
 		while (!kill) {
 			try {
 				Thread.sleep(100);
 			} catch (Exception e) {
-				log.log("Thread failed to sleep");
+				getLogger().log("Thread failed to sleep");
 			}
 			if (always) {
 				try {
@@ -103,7 +103,7 @@ public final class Terminal extends InteractiveObject {
 						cmd1 = Arrays.copyOfRange(total, 0, loc);
 						cmd2 = Arrays.copyOfRange(total, loc + 1, total.length);
 
-						log.log(cmd1[0] + ":" + cmd2[0]);
+						getLogger().log(cmd1[0] + ":" + cmd2[0]);
 
 						if (Launch.cmds.containsKey(cmd1[0])
 								& Launch.cmds.containsKey(cmd2[0])) {
@@ -135,13 +135,13 @@ public final class Terminal extends InteractiveObject {
 								done = c1.run(false);
 								done = c2.run(true);
 								if (done = false)
-									log.log(total[0]
+									getLogger().log(total[0]
 											+ " exited with a bad exit status");
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
 						} else {
-							log.log("Command not found");
+							getLogger().log("Command not found");
 						}
 						LogManager.out.print(currentDir.getName() + ">");
 					} else if (Launch.cmds.containsKey(total[0])) {
@@ -160,7 +160,7 @@ public final class Terminal extends InteractiveObject {
 							} else
 								done = c.run();
 							if (done = false)
-								log.log(total[0]
+								getLogger().log(total[0]
 										+ " exited with a bad exit status");
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -168,16 +168,16 @@ public final class Terminal extends InteractiveObject {
 						LogManager.out.print(currentDir.getName() + ">");
 					} else if (total[0].equals("cmd")) {
 						if (Launch.cmds.containsKey(total[1])) {
-							log.log("Class Name: "
+							getLogger().log("Class Name: "
 									+ Launch.cmds.get(total[1]).getClass()
 											.getName());
 							LogManager.out.print(currentDir.getName() + ">");
 						} else {
-							log.log("Command not found");
+							getLogger().log("Command not found");
 							LogManager.out.print(currentDir.getName() + ">");
 						}
 					} else {
-						log.log("Command not found");
+						getLogger().log("Command not found");
 						LogManager.out.print(currentDir.getName() + ">");
 					}
 				} catch (Exception e) {
@@ -185,7 +185,7 @@ public final class Terminal extends InteractiveObject {
 				}
 			}
 		}
-		log.log("Terminal Closed");
+		getLogger().log("Terminal Closed");
 		sc.close();
 		stop();
 		final Terminal ne = new Terminal();
@@ -248,7 +248,7 @@ public final class Terminal extends InteractiveObject {
 	 */
 	public void setGOutputStream(OutputStream out) {
 		gOut = out;
-		log.setOutputStream(out);
+		getLogger().setOutputStream(out);
 	}
 
 	/**

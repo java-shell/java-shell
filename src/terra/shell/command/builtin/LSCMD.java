@@ -1,4 +1,5 @@
 package terra.shell.command.builtin;
+
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -55,14 +56,14 @@ public class LSCMD extends Command {
 	@Override
 	public boolean start() {
 		Set<String> keys = Launch.cmds.keySet();
-		log.log("Command : Version");
+		getLogger().log("Command : Version");
 		for (String key : keys) {
-			log.log(key + ":  " + Launch.cmds.get(key).getVersion());
+			getLogger().log(key + ":  " + Launch.cmds.get(key).getVersion());
 			if (Launch.cmds.containsKey(key)) {
 				final ArrayList<String> ali = Launch.cmds.get(key).getAliases();
 				if (ali != null) {
 					for (String al : ali) {
-						log.log(" |-->" + al);
+						getLogger().log(" |-->" + al);
 					}
 				}
 			}

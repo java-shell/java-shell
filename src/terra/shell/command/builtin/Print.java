@@ -41,17 +41,17 @@ public class Print extends Command {
 	@Override
 	public boolean start() {
 		if (args.length > 0) {
-			log.filter(false);
+			getLogger().filter(false);
 			if (args[0].startsWith("-")) {
-				log.log(args[0]);
+				getLogger().log(args[0]);
 				if (args[0].equals("-f") || args[0].equals("--filter")) {
-					log.filter(true);
-					log.log("Filtering on");
+					getLogger().filter(true);
+					getLogger().log("Filtering on");
 				}
 				if (args.length > 1)
 					args[0] = args[1];
 				else {
-					log.log("Please specify file path");
+					getLogger().log("Please specify file path");
 					return false;
 				}
 			}
@@ -60,15 +60,15 @@ public class Print extends Command {
 				try {
 					final Scanner sc = new Scanner(new FileInputStream(f));
 					int ln = 0;
-					log.log("Reading " + f.getAbsolutePath());
-					log.print(ln + ": ");
+					getLogger().log("Reading " + f.getAbsolutePath());
+					getLogger().print(ln + ": ");
 					while (sc.hasNextLine()) {
-						log.print(sc.nextLine());
-						log.endln();
+						getLogger().print(sc.nextLine());
+						getLogger().endln();
 						ln++;
-						log.print(ln + ": ");
+						getLogger().print(ln + ": ");
 					}
-					log.endln();
+					getLogger().endln();
 					sc.close();
 					return true;
 				} catch (Exception e) {
@@ -76,7 +76,7 @@ public class Print extends Command {
 					return false;
 				}
 			} else {
-				log.log("File unable to be read!");
+				getLogger().log("File unable to be read!");
 				return false;
 			}
 		}

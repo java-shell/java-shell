@@ -58,7 +58,7 @@ public class RunTX extends BasicCommand {
 	public boolean start() {
 		// TODO Auto-generated method stub
 		if (getNumArgs() < 1) {
-			log.log("Not enough arguments");
+			getLogger().log("Not enough arguments");
 			return false;
 		}
 
@@ -78,7 +78,7 @@ public class RunTX extends BasicCommand {
 		} catch (MalformedURLException e) {
 			File f = new File(args[0]);
 			if (!f.exists()) {
-				log.log("Failed to access resource: " + args[0]);
+				getLogger().log("Failed to access resource: " + args[0]);
 				return false;
 			}
 			try {

@@ -50,14 +50,14 @@ public class UnloadModule extends Command {
 
 	@Override
 	public boolean start() {
-		log.log(args.length + "");
+		getLogger().log(args.length + "");
 		if (args.length != 0) {
-			log.log("Unloading " + args[0]);
+			getLogger().log("Unloading " + args[0]);
 			ModuleManagement.disable(args[0]);
 			return true;
 		} else {
-			log.log("Not Enough Arguments!");
-			log.log("USAGE: ulm <module>");
+			getLogger().log("Not Enough Arguments!");
+			getLogger().log("USAGE: ulm <module>");
 			return true;
 		}
 	}

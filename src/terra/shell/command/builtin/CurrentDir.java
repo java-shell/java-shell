@@ -55,7 +55,7 @@ public class CurrentDir extends Command {
 
 	@Override
 	public boolean start() {
-		log.log("Current Directory: " + term.currentDir());
+		getLogger().log("Current Directory: " + term.currentDir());
 		return true;
 	}
 
