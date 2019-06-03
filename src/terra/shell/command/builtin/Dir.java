@@ -52,11 +52,21 @@ public class Dir extends Command {
 			if (d.getName().length() > len)
 				len = d.getName().length();
 		}
-		boolean full = false;
+		boolean full = false, showHidden = false, iterate = false;
 		if (args.length > 0) {
-			if (largs.contains("-full"))
+			if (largs.contains("-full")) {
 				full = true;
-			else {
+			}
+
+			if (largs.contains("-iterate")) {
+				iterate = true;
+			}
+
+			if (largs.contains("-hidden")) {
+				showHidden = true;
+			}
+
+			if (!args[0].startsWith("-")) {
 				File ftmp = new File(args[0]);
 				if (!ftmp.exists())
 					return false;
@@ -66,14 +76,11 @@ public class Dir extends Command {
 					if (d.getName().length() > len)
 						len = d.getName().length();
 				}
-				print(atmp, full, true, le);
+				print(atmp, full, iterate, showHidden, le);
 			}
-			if (largs.contains("-iterate")) {
-				print(f, false, true, len);
-			}
-		} else {
-			print(f, full, false, len);
+
 		}
+		print(f, full, iterate, showHidden, len);
 		getLogger().endln();
 		getLogger().log("Finished");
 		return true;
@@ -86,7 +93,7 @@ public class Dir extends Command {
 		return al;
 	}
 
-	private void print(File[] f, boolean full, boolean iterate, int longest) {
+	private void print(File[] f, boolean full, boolean iterate, boolean showHidden, int longest) {
 		if (longest > 15) {
 			longest = 15;
 		}
@@ -101,12 +108,22 @@ public class Dir extends Command {
 						break;
 					if (full) {
 						if (ct < f.length) {
-							getLogger().log(f[ct].getAbsolutePath());
+							File cur = f[ct];
+							if (cur.isHidden() && showHidden)
+								getLogger().log(cur.getAbsolutePath());
+							else if (!cur.isHidden())
+								getLogger().log(cur.getAbsolutePath());
+
 						} else
 							break;
 					} else {
 						if (ct < f.length) {
-							getLogger().log(f[ct].getName());
+							File cur = f[ct];
+							if (cur.isHidden() && showHidden)
+								getLogger().log(cur.getName());
+							else if (!cur.isHidden())
+								getLogger().log(cur.getName());
+
 						} else
 							break;
 					}
@@ -138,6 +155,9 @@ public class Dir extends Command {
 				}
 			} else
 				for (File d : f) {
+					if (d.isHidden() && (showHidden != true)) {
+						continue;
+					}
 					char[] c = d.getName().toCharArray();
 					for (int i = 0; i < longest; i++) {
 						if (i >= c.length) {
@@ -159,9 +179,10 @@ public class Dir extends Command {
 			 * { if (f[i].isDirectory()) getLogger().print(f[i].getAbsolutePath() + ":/d ");
 			 * else getLogger().print(f[i].getAbsolutePath() + " "); } else { if
 			 * (f[i].isDirectory()) getLogger().print(f[i].getName() + ":/d "); else
-			 * getLogger().print(f[i].getName() + " "); } } else { index = 1; getLogger().endln();
-			 * if (full) { if (f[i].isDirectory()) getLogger().print(f[i].getAbsolutePath()
-			 * + ":/d "); else getLogger().print(f[i].getAbsolutePath() + " "); } else { if
+			 * getLogger().print(f[i].getName() + " "); } } else { index = 1;
+			 * getLogger().endln(); if (full) { if (f[i].isDirectory())
+			 * getLogger().print(f[i].getAbsolutePath() + ":/d "); else
+			 * getLogger().print(f[i].getAbsolutePath() + " "); } else { if
 			 * (f[i].isDirectory()) getLogger().print(f[i].getName() + ":/d "); else
 			 * getLogger().print(f[i].getName() + " "); } } }
 			 */
