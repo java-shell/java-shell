@@ -2,6 +2,7 @@ package terra.shell.logging;
 
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 import terra.shell.utils.system.Variables;
@@ -13,12 +14,12 @@ import terra.shell.utils.system.Variables;
  * @author dan
  * 
  */
-public class Logger {
-	final private String name;
-	final private int id;
-	private PrintStream out = LogManager.out;
-	private boolean filter = true;
-	private boolean useOut = false;
+public class Logger implements Serializable {
+	final private transient String name;
+	final private transient int id;
+	private transient PrintStream out = LogManager.out;
+	private transient boolean filter = true;
+	private transient boolean useOut = false;
 
 	/**
 	 * Create a Logger with this numerical ID and Display Name

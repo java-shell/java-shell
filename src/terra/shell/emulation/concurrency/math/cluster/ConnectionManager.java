@@ -356,7 +356,7 @@ public final class ConnectionManager {
 					log.debug("Got process of size " + size + " and priority " + priority);
 					byte[] ser = new byte[size];
 					for (int i = 0; i < size; i++) {
-						ser[i] = sc.nextByte();
+						ser[i] = (byte) sc.nextInt();
 					}
 					log.debug("Done receiving process");
 					// De-serialize and instantiate process
@@ -496,9 +496,12 @@ public final class ConnectionManager {
 			byte[] dat = bout.toByteArray();
 			// Tell server [] length, and process priority
 			log.debug("Sending data of size " + dat.length);
-			pOut.println(dat.length + ":" + priority.asInt());
+			pOut.println(dat.length);
+			pOut.println(priority.asInt());
 			// Send serialized process to server
-			pOut.write(dat);
+			for(int i = 0; i < dat.length; i ++) {
+				pOut.println((int) dat[i]);
+			}
 			// Wait for a response
 			String response = sc.nextLine();
 			// If response is FAILURE, close, cleanup

@@ -19,7 +19,7 @@ import terra.shell.utils.system.EventManager;
  * @author dan
  * 
  */
-public abstract class Module implements Serializable{
+public abstract class Module implements Serializable {
 	/**
 	 * 
 	 */
@@ -68,17 +68,18 @@ public abstract class Module implements Serializable{
 	public abstract void onEnable();
 
 	/**
-	 * This function is triggered by the modules preloaded MAListener when an
-	 * event is passed pointing to this module. The ModuleEvent which invoked
-	 * MAListener is then passed to the module.
+	 * This function is triggered by the modules preloaded MAListener when an event
+	 * is passed pointing to this module. The ModuleEvent which invoked MAListener
+	 * is then passed to the module.
 	 * 
 	 * @param event
 	 *            The ModuleEvent which invoked MAListener.
 	 */
 	public abstract void trigger(DummyEvent event);
-/**
- * Lets think real hard about this one for a second...
- */
+
+	/**
+	 * Lets think real hard about this one for a second...
+	 */
 	public void start() {
 		EventManager.registerEvType("M:" + getName());
 		MAListener ml = new MAListener(this);

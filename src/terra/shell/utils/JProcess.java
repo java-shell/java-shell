@@ -29,7 +29,7 @@ public abstract class JProcess implements Serializable {
 	private transient Thread t = null;
 	private transient UUID u;
 	private transient boolean uuidset;
-	private transient Logger log = LogManager.getLogger(getName());
+	private transient Logger log = null;
 	private transient JProcess me = this;
 	private transient InputStream s = null;
 	protected transient Scanner sc = null;
@@ -44,7 +44,7 @@ public abstract class JProcess implements Serializable {
 		sc = new Scanner(s);
 		log = LogManager.getLogger(getName());
 	}
-	
+
 	protected final Logger getLogger() {
 		return log;
 	}
