@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Scanner;
 
+import sun.misc.IOUtils;
+import sun.nio.ch.IOUtil;
 import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
@@ -391,7 +393,6 @@ public final class ConnectionManager {
 						return;
 					}
 					final JProcess procMon = process;
-					process = null;
 					out.println("RUNNING");
 					processes.add(procMon);
 					// Create process monitor to remove from running processes when completed, and
@@ -436,6 +437,7 @@ public final class ConnectionManager {
 						}
 					});
 					processMonitor.setName("ProcessMonitor:" + process.getName() + "-" + process.getUUID().toString());
+					process = null;
 					processMonitor.run();
 				}
 				if (in.equals("ACTIVE")) {
@@ -457,6 +459,7 @@ public final class ConnectionManager {
 		}
 
 		// Add I/O redirection
+		@SuppressWarnings("resource")
 		private boolean sendProcess(Inet4Address ip, JProcess p, ProcessPriority priority, OutputStream out,
 				InputStream in) throws UnknownHostException, IOException {
 			// Setup server connection
@@ -481,7 +484,17 @@ public final class ConnectionManager {
 			}
 
 			p.prepSerialization();
-
+			// TODO Send class as stream to other JSH, load class in at other JSH and then
+			// allow for this one to spawn
+			String classPath = p.getClass().getName().replace('.', '/') + ".class";
+			// Get classes actual bytes in order to reinitialize correctly on host
+			InputStream cin = p.getClass().getClassLoader().getResourceAsStream(classPath);
+			LinkedList<Byte> cBytes = new LinkedList<Byte>();
+			int b;
+			while ((b = cin.read()) != -1) {
+				cBytes.add((byte) b);
+			}
+			// TODO Write class to outputstream
 			// Serialize process
 			log.debug("Serializing Process: " + p.getClass().toString());
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
@@ -499,7 +512,7 @@ public final class ConnectionManager {
 			pOut.println(dat.length);
 			pOut.println(priority.asInt());
 			// Send serialized process to server
-			for(int i = 0; i < dat.length; i ++) {
+			for (int i = 0; i < dat.length; i++) {
 				pOut.println((int) dat[i]);
 			}
 			// Wait for a response
@@ -551,6 +564,7 @@ public final class ConnectionManager {
 		private Inet4Address ip;
 		private Socket s;
 
+		@SuppressWarnings("unused")
 		public Node(Inet4Address ip) throws UnknownHostException, IOException {
 			this.ip = ip;
 			s = new Socket(ip.getHostAddress(), port);

@@ -11,6 +11,7 @@ import terra.shell.command.Command;
 import terra.shell.command.Terminal;
 import terra.shell.config.Configuration;
 import terra.shell.utils.perms.Permissions;
+import terra.shell.utils.system.user.User;
 
 public class Login extends Command {
 
@@ -18,6 +19,9 @@ public class Login extends Command {
 	 * 
 	 */
 	private static final long serialVersionUID = 3992841719130735454L;
+
+	private User user = null; // TODO Add code to return User object, and then use getUser method to retrieve
+								// user in Terminal
 
 	public Login(Terminal t) {
 		super(t);
@@ -73,6 +77,7 @@ public class Login extends Command {
 
 	private boolean run;
 	private boolean fst;
+	private static boolean print = true;
 
 	@Override
 	public boolean start() {
@@ -88,7 +93,8 @@ public class Login extends Command {
 				newconf = true;
 			} catch (Exception e) {
 				e.printStackTrace(new PrintStream(getLogger().getOutputStream()));
-				getLogger().log("Unable to obtain system credentials or create new Configuration for System Credentials");
+				getLogger()
+						.log("Unable to obtain system credentials or create new Configuration for System Credentials");
 				while (true)
 					;
 			}
@@ -104,8 +110,29 @@ public class Login extends Command {
 			getLogger().err("FAILED TO GET FILE LOCK ON \"uinf\", user login information is susceptible to tampering");
 		}
 		// TODO Lock cnf to prevent manipulation
-		// TODO Create MD5 or other Hash file alongside to prevent modification of cnf when
+		// TODO Create MD5 or other Hash file alongside to prevent modification of cnf
+		// when
 		// system is down
+		Thread mask = new Thread(new Runnable() {
+
+			public void run() {
+				run = true;
+				while (run) {
+					if (print)
+						getLogger().print("\010" + "*");
+					try {
+						Thread.sleep(2);
+					} catch (Exception e) {
+						getLogger().log("Warning: Password masking failed! Your password is visible!");
+						run = false;
+						return;
+					}
+				}
+				return;
+			}
+
+		});
+		mask.setPriority(Thread.MAX_PRIORITY);
 
 		if (fst) {
 			String user = "user", pwd = "pwd";
@@ -116,12 +143,29 @@ public class Login extends Command {
 					getLogger().log("First time use, please enter Username and Password");
 					getLogger().print("Username:");
 					user = sc.next();
+					if (user.length() > 15) {
+						getLogger().log("Username exceeds 15 character limit!");
+						continue;
+					}
+					if (user.contains(",")) {
+						getLogger().log(
+								"Username has invalid characters! Only letters, numbers, and \"_\" are valid characters");
+						continue;
+					}
 					getLogger().endln();
 					getLogger().print("Password:");
+					mask.start();
 					pwd = sc.next();
+					if (pwd.length() > 15) {
+						getLogger().log("Password exceeds 15 character limit!");
+						continue;
+					}
 					getLogger().endln();
+					print = false;
 					getLogger().log("Please confirm password");
+					print = true;
 					String cpwd = sc.next();
+					print = false;
 					getLogger().endln();
 					if (!cpwd.equals(pwd)) {
 						getLogger().log("Passwords do not match");
@@ -131,7 +175,6 @@ public class Login extends Command {
 					getLogger().log("Please confirm credentials:");
 					getLogger().log("Username: " + user);
 					getLogger().log("Correct? [y/n]");
-					// getLogger().log("Password: " + pwd);
 					if (sc.next().equalsIgnoreCase("y")) {
 						nDone = true;
 						getLogger().clear();
@@ -158,26 +201,10 @@ public class Login extends Command {
 		getLogger().endln();
 
 		BufferedInputStream bin = new BufferedInputStream(term.getGInputStream());
-		Thread mask = new Thread(new Runnable() {
-			public void run() {
-				run = true;
-				while (run) {
-					getLogger().print("\010" + "*");
-					try {
-						Thread.sleep(2);
-					} catch (Exception e) {
-						getLogger().log("Warning: Password masking failed! Your password is visible!");
-						run = false;
-						return;
-					}
-				}
-				return;
-			}
-		});
-		mask.setPriority(Thread.MAX_PRIORITY);
+
+		run = true;
 		getLogger().log("Please enter username:");
 		getLogger().print(">");
-		mask.start();
 		int b, am = 0;
 		char[] u = new char[15];
 		try {
@@ -185,28 +212,14 @@ public class Login extends Command {
 				u[am] = (char) b;
 				am++;
 			}
-			run = false;
-			mask = new Thread(new Runnable() {
-				public void run() {
-					run = true;
-					while (run) {
-						getLogger().print("\010" + "*");
-						try {
-							Thread.sleep(2);
-						} catch (Exception e) {
-							getLogger().log("Warning: Password masking failed! Your password is visible!");
-							run = false;
-							return;
-						}
-					}
-					return;
-				}
-			});
 			getLogger().log("Please enter password:");
 			getLogger().print(">");
 			char[] p = new char[15];
 			am = 0;
-			mask.start();
+			if (mask.isAlive())
+				print = true;
+			else
+				mask.start();
 			while (((b = bin.read()) != '\n') && am < 16) {
 				p[am] = (char) b;
 				am++;

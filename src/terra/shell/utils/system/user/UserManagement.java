@@ -7,7 +7,8 @@ import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
 
 public final class UserManagement {
-	private static ArrayList<User> registeredUsers = new ArrayList<User>();
+	private static ArrayList<User> registeredUsers = new ArrayList<User>(); // TODO change to hashtable<String, User>,
+																			// so access by name is easier
 	private static boolean init = false;
 
 	public static void init() {
@@ -16,9 +17,14 @@ public final class UserManagement {
 
 		Configuration conf = Launch.getConfig("userManagement");
 		if (conf == null) {
-			
+			conf = new Configuration(new File(Launch.getConfD(), "userManagement"));
+			conf.setValue("userNames", "");
 		}
-
+		String userNames = (String) conf.getValue("userNames");
+		String[] users = userNames.split(",");
+		for (String user : users) {
+			// TODO register users based on name
+		}
 		init = true;
 	}
 

@@ -44,7 +44,9 @@ public final class Terminal extends InteractiveObject {
 
 	/**
 	 * Create a new terminal specifying the direction of its output
-	 * @param gout OutputStream to point all of this terminals output.
+	 * 
+	 * @param gout
+	 *            OutputStream to point all of this terminals output.
 	 */
 	public Terminal(OutputStream gout) {
 		gOut = gout;
@@ -84,6 +86,10 @@ public final class Terminal extends InteractiveObject {
 			if (always) {
 				try {
 					in = sc.nextLine();
+					if (in.equals("")) {
+						LogManager.out.print(currentDir.getName() + ">");
+						continue;
+					}
 					final String[] total = in.split(" ");
 					if (total[0].equals("logout")) {
 						respawn = true;
@@ -105,8 +111,7 @@ public final class Terminal extends InteractiveObject {
 
 						getLogger().log(cmd1[0] + ":" + cmd2[0]);
 
-						if (Launch.cmds.containsKey(cmd1[0])
-								& Launch.cmds.containsKey(cmd2[0])) {
+						if (Launch.cmds.containsKey(cmd1[0]) & Launch.cmds.containsKey(cmd2[0])) {
 							final Command c1 = Launch.cmds.get(cmd1[0]);
 							final Command c2 = Launch.cmds.get(cmd2[0]);
 							final String[] args1 = new String[total.length - 1];
@@ -118,8 +123,7 @@ public final class Terminal extends InteractiveObject {
 								args2[i - 1] = cmd2[i];
 							}
 							final OutputStreamMonitorBuffer tout = new OutputStreamMonitorBuffer();
-							final InputStreamBuffer inb = new InputStreamBuffer(
-									tout);
+							final InputStreamBuffer inb = new InputStreamBuffer(tout);
 							c1.addArgs(args1, this);
 							c1.setOutputStream(tout);
 							c1.redirectIn(gIn);
@@ -135,8 +139,7 @@ public final class Terminal extends InteractiveObject {
 								done = c1.run(false);
 								done = c2.run(true);
 								if (done = false)
-									getLogger().log(total[0]
-											+ " exited with a bad exit status");
+									getLogger().log(total[0] + " exited with a bad exit status");
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
@@ -160,17 +163,14 @@ public final class Terminal extends InteractiveObject {
 							} else
 								done = c.run();
 							if (done = false)
-								getLogger().log(total[0]
-										+ " exited with a bad exit status");
+								getLogger().log(total[0] + " exited with a bad exit status");
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
 						LogManager.out.print(currentDir.getName() + ">");
 					} else if (total[0].equals("cmd")) {
 						if (Launch.cmds.containsKey(total[1])) {
-							getLogger().log("Class Name: "
-									+ Launch.cmds.get(total[1]).getClass()
-											.getName());
+							getLogger().log("Class Name: " + Launch.cmds.get(total[1]).getClass().getName());
 							LogManager.out.print(currentDir.getName() + ">");
 						} else {
 							getLogger().log("Command not found");
@@ -204,9 +204,13 @@ public final class Terminal extends InteractiveObject {
 	}
 
 	/**
-	 * Run a specific command, calling it using the returned string from Command.getName();
-	 * @param cmd String referring to the Command
-	 * @param args Arguments to pass to the command
+	 * Run a specific command, calling it using the returned string from
+	 * Command.getName();
+	 * 
+	 * @param cmd
+	 *            String referring to the Command
+	 * @param args
+	 *            Arguments to pass to the command
 	 * @return True if the command is run successfully, false otherwise
 	 */
 	public boolean runCmd(String cmd, String... args) {
@@ -220,6 +224,7 @@ public final class Terminal extends InteractiveObject {
 
 	/**
 	 * Get the directory this terminal is currently looking at
+	 * 
 	 * @return The directory currently being looked at
 	 */
 	public File currentDir() {
@@ -228,7 +233,9 @@ public final class Terminal extends InteractiveObject {
 
 	/**
 	 * Change the directory which this terminal is looking at
-	 * @param dir A new directory
+	 * 
+	 * @param dir
+	 *            A new directory
 	 */
 	public void setCurrentDir(File dir) {
 		currentDir = dir;
@@ -236,6 +243,7 @@ public final class Terminal extends InteractiveObject {
 
 	/**
 	 * Get the current stream that this terminal's output is pointing to
+	 * 
 	 * @return The OutputStream this terminal's output is being pointed to
 	 */
 	public OutputStream getGOutputStream() {
@@ -244,7 +252,9 @@ public final class Terminal extends InteractiveObject {
 
 	/**
 	 * Set the current stream that this terminal's output is pointing to
-	 * @param out An OutputStream
+	 * 
+	 * @param out
+	 *            An OutputStream
 	 */
 	public void setGOutputStream(OutputStream out) {
 		gOut = out;
@@ -253,7 +263,9 @@ public final class Terminal extends InteractiveObject {
 
 	/**
 	 * Set the terminal's InputStream
-	 * @param in An InputStream
+	 * 
+	 * @param in
+	 *            An InputStream
 	 */
 	public void setGInputStream(InputStream in) {
 		gIn = in;
@@ -264,6 +276,7 @@ public final class Terminal extends InteractiveObject {
 
 	/**
 	 * Get the InputStream this terminal is currently listening to
+	 * 
 	 * @return The InputStream currently being listened to by this terminal
 	 */
 	public InputStream getGInputStream() {
@@ -283,6 +296,7 @@ public final class Terminal extends InteractiveObject {
 
 	/**
 	 * Get this terminals command history
+	 * 
 	 * @return A String[][] containing the last executed commands in order
 	 */
 	public String[][] getHistory() {

@@ -15,13 +15,16 @@ import terra.shell.logging.Logger;
 import terra.shell.utils.system.Variables;
 
 public class Configuration {
-	private int type;
-	private File f;
-	private InputStream in;
-	private URL u;
+	private int type = 3; // 0 - File; 1 - InputStream; 2 - URL; 3 - No Physical
+	protected File f;
+	protected InputStream in;
+	protected URL u;
 	private Logger log = LogManager.getLogger("Configuration");
 
-	private Hashtable<String, Object> vlist = new Hashtable<String, Object>();
+	protected Hashtable<String, Object> vlist = new Hashtable<String, Object>();
+
+	protected Configuration() {
+	}
 
 	/**
 	 * Create a new configuration object
@@ -60,7 +63,7 @@ public class Configuration {
 		parse();
 	}
 
-	private void parse() {
+	protected void parse() {
 		if (!f.exists())
 			return;
 		InputStream tmp = null;
@@ -152,6 +155,10 @@ public class Configuration {
 		}
 		return 0;
 	}
+	
+	public int getType() {
+		return type;
+	}
 
 	/**
 	 * Checks if a value has been assigned to this id
@@ -178,7 +185,7 @@ public class Configuration {
 		_write();
 	}
 
-	private void _write() {
+	protected void _write() {
 		Set<String> keys = vlist.keySet();
 		try {
 			if (type == 0) {

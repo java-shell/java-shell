@@ -62,7 +62,7 @@ import terra.shell.utils.system.Variables;
  * 
  */
 public class Launch {
-	private static Logger log = LogManager.getLogger("Base");
+	private static Logger log = LogManager.getLogger("KERNEL");
 	private static boolean doHib = false;
 	private static boolean doTerm = true;
 	private static JSHClassLoader loader;
