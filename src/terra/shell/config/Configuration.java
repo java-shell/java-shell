@@ -64,10 +64,13 @@ public class Configuration {
 	}
 
 	protected void parse() {
+		//Check the configuration file exists
 		if (!f.exists())
 			return;
 		InputStream tmp = null;
+		//Check the conf type, and deal with it accordingly
 		if (type == 0) {
+			//Conf is a local file
 			try {
 				tmp = new FileInputStream(f);
 			} catch (Exception e) {
@@ -76,9 +79,11 @@ public class Configuration {
 			}
 		}
 		if (type == 1) {
+			//Conf is being served through a stream
 			tmp = in;
 		}
 		if (type == 2) {
+			//Conf is being served through a URL
 			try {
 				tmp = u.openStream();
 			} catch (Exception e) {
@@ -89,18 +94,22 @@ public class Configuration {
 			log.log("Failed to get InputStream for Configuration!");
 			return;
 		}
+		//Begin reading the conf information
 		Scanner sc = new Scanner(tmp);
 		String st;
 		while (sc.hasNext() && (st = sc.nextLine()) != null) {
+			//Check if the line is a comment, if not, parse
 			if (!st.startsWith("#")) {
 				final String[] bk = st.split(":");
 				if (bk.length == 2) {
+					//Check for variable declarations in the conf, and substitute
 					if (bk[1].contains("%")) {
 						final String tm = Variables.getVarValue(bk[2]);
 						if (tm != null) {
 							bk[1] = tm;
 						}
 					}
+					//Save configuration declarations in memory
 					vlist.put(bk[0], bk[1]);
 				} else {
 					if (bk.length == 1)
@@ -186,6 +195,7 @@ public class Configuration {
 	}
 
 	protected void _write() {
+		//Writes the configuration
 		Set<String> keys = vlist.keySet();
 		try {
 			if (type == 0) {

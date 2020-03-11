@@ -81,8 +81,10 @@ public class Login extends Command {
 
 	@Override
 	public boolean start() {
+		// Take over terminal stream
 		getLogger().setOutputStream(term.getGOutputStream());
 
+		// Load the user info conf
 		Configuration conf = Launch.getConfig("uinf");
 		final File cnf = new File(Launch.getConfD() + "/uinf");
 		boolean newconf = false;
@@ -101,6 +103,7 @@ public class Login extends Command {
 		}
 		conf = new Configuration(cnf);
 
+		// Attempt to lock the user info conf
 		try {
 			RandomAccessFile raf = new RandomAccessFile(cnf, "rw");
 			raf.getChannel().lock();
@@ -113,6 +116,8 @@ public class Login extends Command {
 		// TODO Create MD5 or other Hash file alongside to prevent modification of cnf
 		// when
 		// system is down
+
+		// Initialize character masking for password entry
 		Thread mask = new Thread(new Runnable() {
 
 			public void run() {
@@ -134,6 +139,7 @@ public class Login extends Command {
 		});
 		mask.setPriority(Thread.MAX_PRIORITY);
 
+		// Check if this is the first login, if it is, then run user setup
 		if (fst) {
 			String user = "user", pwd = "pwd";
 			if (newconf) {
@@ -183,6 +189,7 @@ public class Login extends Command {
 			}
 
 			conf.setValue("uname", user);
+			// Encode the password for storage
 			byte[] b = PasswordEncoder.parseString(pwd);
 			String pass = "";
 			for (int i = 0; i < b.length; i++) {
@@ -195,6 +202,7 @@ public class Login extends Command {
 		final String[] pass = ((String) conf.getValue("pass")).split(";");
 		final char[] pas = new char[15];
 
+		// Decode the password for comparison
 		for (int i = 0; i < pass.length; i++) {
 			pas[i] = PasswordEncoder.parseByte(Byte.parseByte(pass[i]));
 		}
@@ -207,6 +215,7 @@ public class Login extends Command {
 		getLogger().print(">");
 		int b, am = 0;
 		char[] u = new char[15];
+		// Read username and password from user input
 		try {
 			while (((b = bin.read()) != '\n') && am < 16) {
 				u[am] = (char) b;

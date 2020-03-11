@@ -9,22 +9,23 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.Constructor;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Scanner;
 
-import sun.misc.IOUtils;
-import sun.nio.ch.IOUtil;
 import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 import terra.shell.utils.JProcess;
+import terra.shell.utils.system.JSHClassLoader;
 
 public final class ConnectionManager {
 
@@ -140,34 +141,45 @@ public final class ConnectionManager {
 	 * @throws IOException
 	 */
 	public long ping(String ip) throws UnknownHostException, IOException {
+		// Check for valid IP
 		if (ip == null)
 			return -1;
 		log.debug("Sending PING request", 2);
 		Socket s = new Socket();
+		// Connect to Node host
 		s.connect(new InetSocketAddress(ip, port), 1000);
 		log.debug("Pinging: " + s.getInetAddress().getHostAddress());
+		// Initialize Socket IO
 		PrintStream out = new PrintStream(s.getOutputStream());
 		Scanner sc = new Scanner(s.getInputStream());
-
+		// Attempt to handshake with Node
 		if (!completeHandshake(sc, out)) {
+			// If handshake fails, return exit code
 			sc.close();
 			out.close();
 			s.close();
 			return -1;
 		}
-
+		// Log start time of ping
 		long startTimeStamp = System.currentTimeMillis();
+		// Send PING query
 		out.println("PING");
 		log.debug("Sent PING\nAwaiting Response..", 2);
+		// Wait for server response, if server responds correctly...
 		if (sc.nextLine().equals("CCSERVER")) {
+			// Log ping finish time
 			long pingTime = System.currentTimeMillis() - startTimeStamp;
+			// Inform Terminal that PING was successful
 			log.debug("Got CCSERVER response, ping is " + pingTime + "ms", 2);
+			// Close Socket and IO
 			s.close();
 			sc.close();
 			return pingTime;
 		}
+		// Cleanup
 		s.close();
 		sc.close();
+		// Return exit code, Ping failed
 		return -1;
 	}
 
@@ -187,11 +199,14 @@ public final class ConnectionManager {
 		InetSocketAddress rolling;
 		for (int i = ipScanRangeMin; i <= ipScanRangeMax; i++) {
 			try {
+				// Adjust IP to scan next device on network
 				rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
+				// Attempt a connection to a possible Node
 				s.connect(rolling, 10);
+				// If connection completes, get Socket IO
 				out = new PrintStream(s.getOutputStream());
 				sc = new Scanner(s.getInputStream());
-
+				// Ping the possible Node
 				out.println("PING");
 				String in = sc.nextLine();
 				if (in.equals("CCSERVER")) {
@@ -216,8 +231,10 @@ public final class ConnectionManager {
 	 * @throws IOException
 	 */
 	public boolean addNode(Inet4Address ip) throws UnknownHostException, IOException {
+		// Ping the server to check if it exists
 		long ping = ping(ip);
 		if (ping != -1) {
+			// Add the server as Node object
 			nodes.add(new Node(ip, ping));
 			return true;
 		}
@@ -247,13 +264,9 @@ public final class ConnectionManager {
 	 */
 	private boolean completeHandshake(Scanner sc, PrintStream out) {
 		log.debug("Starting Handshake");
-		// long timeStamp = System.currentTimeMillis();
+		// Send query message to server
 		out.println("READY");
-		/*
-		 * while (!sc.hasNextLine()) { out.println("READY"); if
-		 * (System.currentTimeMillis() - timeStamp > handshakeTimeout) {
-		 * log.log("Handshake timeout"); return false; } }
-		 */
+		// Receive query response
 		String s = sc.nextLine();
 		log.debug("Handshake complete: " + s);
 		return true;
@@ -270,6 +283,17 @@ public final class ConnectionManager {
 		private final ServerSocket ss = createServer();
 		private int connections = 0;
 		private ArrayList<JProcess> processes = new ArrayList<JProcess>();
+		private JSHClassLoader loader;
+
+		public LocalServer() {
+			try {
+				// Acquire a classloader for loaded objects in Active Processing, use the same
+				// class scope as Commands and Modules to allow for interaction between both
+				loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 
 		public void startServer() throws IOException {
 			log.log("Starting Local Server");
@@ -315,7 +339,7 @@ public final class ConnectionManager {
 
 			final Scanner sc = new Scanner(s.getInputStream());
 			final PrintStream out = new PrintStream(s.getOutputStream());
-			// TODO Add client handling
+			// Client handling
 			// - Ping
 			// - Passive Cluster
 			// - Active Cluster
@@ -349,10 +373,31 @@ public final class ConnectionManager {
 					log.debug("Passive connection received");
 					connections++;
 					out.println("RECEIVEDAT");
+
+					log.log("Realizing Quantized class...");
+					// Load class from bytes
+					// Save 'c' for a bit so GC doesn't remove the class from mem
+					// FIXME Add reception for dependency classes (Untested)
+					int numDeps = sc.nextInt();
+					log.debug("Receiving Dependencies...");
+					Class<?>[] classDeps = new Class<?>[numDeps];
+					log.debug("Says there are " + numDeps + " dependencies"); // FIXME sendProcess and reception not
+																				// lining up
+					for (int i = 0; i < numDeps; i++) {
+						classDeps[i] = receiveClass(out, sc);
+					}
+					Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
+					try {
+						JProcess p = (JProcess) c.newInstance(); // FIXME Class not being realized properly, need deps
+					} catch (Exception e) {
+						e.printStackTrace();
+						out.println("FAIL:" + e.getMessage());
+					}
+					log.log("Realized " + c.getName());
 					// Receive size of serialized process
 					int size = sc.nextInt();
 					// Receive process priority of process
-					// TODO Implement prioritizing
+					// FIXME Implement prioritizing
 					int priority = sc.nextInt();
 					// Allocate space for, and read in serialized process
 					log.debug("Got process of size " + size + " and priority " + priority);
@@ -369,6 +414,7 @@ public final class ConnectionManager {
 						processObj = objIn.readObject();
 					} catch (ClassNotFoundException e) {
 						// If de-serialization fails, throw error to client, cleanup
+						e.printStackTrace();
 						out.println("FAIL:" + e.getMessage());
 						s.close();
 						objIn.close();
@@ -384,20 +430,26 @@ public final class ConnectionManager {
 					try {
 						process = (JProcess) processObj;
 						// Set process to use I/O from Socket
-						process.reInitialize();
+						process.reInitialize(classDeps);
 						process.setOutputStream(out);
 						process.redirectIn(s.getInputStream());
 					} catch (ClassCastException e) {
+						e.printStackTrace();
 						out.println("FAIL:" + e.getMessage());
 						s.close();
 						return;
 					}
+					// Free up space, at this point 'c' is not needed
+					c = null;
 					final JProcess procMon = process;
 					out.println("RUNNING");
 					processes.add(procMon);
 					// Create process monitor to remove from running processes when completed, and
 					// cleanup
-					Thread processMonitor = new Thread(new Runnable() {
+					Thread processMonitor = new Thread(new Runnable() { // FIXME Update procMonitor to not have to
+																		// update every .5 seconds, instead include
+																		// trigger inside of JProcess, use form similar
+																		// to EventDriven to signal when a proc is done
 						public void run() {
 							if (!procMon.isRunning())
 								procMon.run();
@@ -455,7 +507,6 @@ public final class ConnectionManager {
 				}
 			}
 			sc.close();
-
 		}
 
 		// Add I/O redirection
@@ -477,15 +528,15 @@ public final class ConnectionManager {
 			final String nextLine = sc.nextLine();
 			if (!nextLine.equals("RECEIVEDAT")) {
 				log.debug("Server incorrectly responded, expected \"RECEIVEDAT\" got \"" + nextLine + "\"");
-				// TODO add failure reason
 				s.close();
 				sc.close();
 				return false;
 			}
 
 			p.prepSerialization();
-			// TODO Send class as stream to other JSH, load class in at other JSH and then
+			// Send class as stream to other JSH, load class in at other JSH and then
 			// allow for this one to spawn
+			log.debug("Quantizing Process...");
 			String classPath = p.getClass().getName().replace('.', '/') + ".class";
 			// Get classes actual bytes in order to reinitialize correctly on host
 			InputStream cin = p.getClass().getClassLoader().getResourceAsStream(classPath);
@@ -494,7 +545,7 @@ public final class ConnectionManager {
 			while ((b = cin.read()) != -1) {
 				cBytes.add((byte) b);
 			}
-			// TODO Write class to outputstream
+			log.debug("Quantization Complete");
 			// Serialize process
 			log.debug("Serializing Process: " + p.getClass().toString());
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
@@ -504,11 +555,54 @@ public final class ConnectionManager {
 			objOut.close();
 			objOut = null;
 			log.debug("Serialization complete!");
+			log.debug("Running dependency check...");
+			// CODEAT Check for dependencies
+			if (p.getClass().isAnnotationPresent(JProcess.Depends.class)) {
+				Constructor<?>[] cons = p.getClass().getConstructors();
+				Class<?>[] deps = null;
+				// Find annotated constructor/constructors
+				for (Constructor<?> c : cons) {
+					if (c.isAnnotationPresent(JProcess.Depends.class)) {
+						Depends d = c.getAnnotation(JProcess.Depends.class);
+						// Get dependencies listed in annotation
+						deps = d.dependencies();
+						break;
+					}
+				}
+				if (deps != null) {
+					// Send dependencies over
+					pOut.println(deps.length);
+					for (Class<?> dep : deps) {
+						if (dep != null) {
+							// TODO Quantize and send class
+							if (!sendClass(dep, pOut, sc)) {
+								// FIXME Send error message to console
+							}
+						}
+					}
+				} else {
+					pOut.println(0);
+				}
+			}
+
+			log.debug("Finished Dependency Check");
+
+			log.debug("Sending size of quantized data: " + cBytes.size());
+			pOut.println(cBytes.size());
+			char[] cName = p.getClass().getName().toCharArray();
+			pOut.println(cName.length);
+			log.debug("Sending class name: " + p.getName());
+			for (int i = 0; i < cName.length; i++)
+				pOut.println((int) ((byte) cName[i]));
+			log.debug("Sending quantized data...");
+			for (Byte by : cBytes) {
+				pOut.println((int) by);
+			}
 
 			// Turn serialized process into byte[]
 			byte[] dat = bout.toByteArray();
 			// Tell server [] length, and process priority
-			log.debug("Sending data of size " + dat.length);
+			log.debug("Sending size of data " + dat.length);
 			pOut.println(dat.length);
 			pOut.println(priority.asInt());
 			// Send serialized process to server
@@ -556,6 +650,66 @@ public final class ConnectionManager {
 				e.printStackTrace();
 			}
 			return false;
+		}
+
+		public Class<?> receiveClass(PrintStream out, Scanner sc) {
+			log.debug("Recieving Quantized class size...");
+			// Get Class size
+			int cSize = sc.nextInt();
+			log.debug("Got size " + cSize);
+			log.debug("Recieving Quantized class data...");
+			log.debug("Getting name...");
+			int cNameSize = sc.nextInt();
+			log.debug("Got name size " + cNameSize);
+			char[] cNameArr = new char[cNameSize];
+			for (int i = 0; i < cNameSize; i++)
+				cNameArr[i] = (char) sc.nextInt();
+			String cName = new String(cNameArr);
+			cNameArr = null;
+			log.debug("Got name: " + cName);
+			byte[] cBytes = new byte[cSize];
+			// Receive Class
+			for (int i = 0; i < cSize; i++) {
+				cBytes[i] = (byte) sc.nextInt();
+			}
+			log.log("Realizing Quantized class...");
+			// Load class from bytes
+			// Save 'c' for a bit so GC doesn't remove the class from mem
+			Class<?> c = loader.getClass(cName, cBytes);
+			return c;
+		}
+
+		public boolean sendClass(Class<?> c, PrintStream out, Scanner sc) throws IOException {
+			String classPath = c.getName().replace('.', '/') + ".class";
+			InputStream cin = c.getClassLoader().getResourceAsStream(classPath);
+			LinkedList<Byte> dat = new LinkedList<Byte>();
+			int b;
+			while ((b = cin.read()) != -1) {
+				dat.add((byte) b);
+			}
+			log.debug("Sending size of data " + dat.size());
+			out.println(dat.size());
+
+			log.debug("Sending class name " + classPath);
+			char[] cName = classPath.toCharArray();
+			log.debug("Sending class name size " + cName.length);
+			out.println(cName.length);
+			for (char ch : cName) {
+				out.print(ch);
+			}
+			// Send serialized process to server
+			for (int i = 0; i < dat.size(); i++) {
+				out.println((int) dat.get(i));
+			}
+			// Wait for a response
+			String response = sc.nextLine();
+			// If response is FAILURE, close, cleanup
+			if (response.startsWith("FAIL")) {
+				log.err(response);
+				return false;
+			}
+			log.debug("Process sent");
+			return true;
 		}
 	}
 

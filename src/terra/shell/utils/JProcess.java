@@ -3,6 +3,9 @@ package terra.shell.utils;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -32,6 +35,7 @@ public abstract class JProcess implements Serializable {
 	private transient Logger log = null;
 	private transient JProcess me = this;
 	private transient InputStream s = null;
+	private Class<?>[] deps;
 	protected transient Scanner sc = null;
 	private boolean canBeSerialized = false;
 
@@ -54,6 +58,11 @@ public abstract class JProcess implements Serializable {
 	 * the process as being foreign
 	 */
 	public final void reInitialize() {
+		init();
+	}
+	
+	public final void reInitialize(Class<?>[] deps) {
+		this.deps = deps;
 		init();
 	}
 
@@ -84,7 +93,6 @@ public abstract class JProcess implements Serializable {
 		if (t == null)
 			return;
 		t.interrupt();
-		// stop = true;
 	}
 
 	/**
@@ -126,11 +134,14 @@ public abstract class JProcess implements Serializable {
 	public final boolean run() {
 		stop = false;
 		isGoing = true;
+		//Create a new thread in which to run this process
 		t = new Thread(new Runnable() {
 			public void run() {
+				//Add the process to the process manager (JSHProcesses)
 				setUUID(UUID.randomUUID());
 				JSHProcesses.addProcess(me);
 				try {
+					//Run the task assigned to this process
 					if (start())
 						;
 					else
@@ -138,6 +149,7 @@ public abstract class JProcess implements Serializable {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
+				//Cleanup
 				stop();
 				t.interrupt();
 				isGoing = false;
@@ -148,9 +160,12 @@ public abstract class JProcess implements Serializable {
 		});
 		t.setName(getName());
 		try {
+			//Run the thread which contains the task to be executed
 			t.start();
 			boolean suspended = false;
+			//Simple process monitor
 			while (!t.isInterrupted() && !stop && isGoing) {
+				//Check every 20ms if the process is either suspended, or stopped
 				Thread.sleep(20);
 				if (suspend & !suspended) {
 					t.wait();
@@ -166,20 +181,17 @@ public abstract class JProcess implements Serializable {
 			e.printStackTrace();
 		}
 		try {
-			// log.log("Fin");
-			if (me == null)
-				log.log("ME");
+			//If the process has completed, run the stop procedure from the Process Manager
 			JSHProcesses.stopProcess(me);
 			if (log == null) {
 				log.log("LOG");
 			}
+			//Cleanup
 			LogManager.removeLogger(log);
 			halt();
-			// stop = true;
 		} catch (Exception e) {
 			LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
 			e.printStackTrace();
-			// stop = false;
 		}
 
 		return true;
@@ -231,7 +243,6 @@ public abstract class JProcess implements Serializable {
 			t.start();
 			if (holdup)
 				try {
-					// t.start();
 					boolean suspended = false;
 					while (!t.isInterrupted() && !stop && isGoing) {
 						Thread.sleep(20);
@@ -252,16 +263,13 @@ public abstract class JProcess implements Serializable {
 			e.printStackTrace();
 		}
 		try {
-			// log.log("Fin");
 			if (holdup) {
 				JSHProcesses.stopProcess(me);
 				LogManager.removeLogger(log);
 				halt();
 			}
-			// stop = true;
 		} catch (Exception e) {
 			LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
-			// stop = false;
 		}
 
 		return true;
@@ -337,6 +345,15 @@ public abstract class JProcess implements Serializable {
 	 */
 	public final boolean canSerialize() {
 		return canBeSerialized;
+	}
+
+	// List dependencies for JProcess so it can be reinitialized on other systems
+	// properly
+	// If the JProcess is a nested class, be sure to include the enclosing class as
+	// a dependency
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface Depends {
+		public Class<?>[] dependencies() default Object.class;
 	}
 
 }
