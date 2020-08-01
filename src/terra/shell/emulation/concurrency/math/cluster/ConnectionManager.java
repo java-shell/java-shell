@@ -10,6 +10,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -377,18 +378,18 @@ public final class ConnectionManager {
 					log.log("Realizing Quantized class...");
 					// Load class from bytes
 					// Save 'c' for a bit so GC doesn't remove the class from mem
-					// FIXME Add reception for dependency classes (Untested)
-					int numDeps = sc.nextInt();
+					// DONE Add reception for dependency classes (Untested)
+					int numDeps = Integer.parseInt(sc.nextLine());
 					log.debug("Receiving Dependencies...");
 					Class<?>[] classDeps = new Class<?>[numDeps];
-					log.debug("Says there are " + numDeps + " dependencies"); // FIXME sendProcess and reception not
+					log.debug("Says there are " + numDeps + " dependencies"); // DONE sendProcess and reception not
 																				// lining up
 					for (int i = 0; i < numDeps; i++) {
 						classDeps[i] = receiveClass(out, sc);
 					}
 					Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
 					try {
-						JProcess p = (JProcess) c.newInstance(); // FIXME Class not being realized properly, need deps
+						JProcess p = (JProcess) c.newInstance(); // DONE Class not being realized properly, need deps
 					} catch (Exception e) {
 						e.printStackTrace();
 						out.println("FAIL:" + e.getMessage());
@@ -407,11 +408,42 @@ public final class ConnectionManager {
 					}
 					log.debug("Done receiving process");
 					// De-serialize and instantiate process
-					ObjectInputStream objIn = new ObjectInputStream(new ByteArrayInputStream(ser));
-					Object processObj;
+					ObjectInputStream objIn;
+					try {
+						objIn = (ObjectInputStream) loader.loadClass(ObjectInputStream.class.getCanonicalName())
+								.getConstructor(InputStream.class) // Attempt
+								// to
+								// initialize
+								// ObjectInputStream
+								// in
+								// scope
+								// of
+								// modules:///?
+								// Might
+								// allow -FAILURE-
+								// access
+								// to
+								// scope
+								// of
+								// modules:///?
+								.newInstance(new ByteArrayInputStream(ser));
+
+						// TODO Try to instantiate objIn as JSHClassLoader
+					} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+							| IllegalArgumentException | InvocationTargetException | NoSuchMethodException
+							| SecurityException e) {
+						e.printStackTrace();
+						objIn = new ObjectInputStream(new ByteArrayInputStream(ser));
+					}
+					JProcess processObj;
 					log.debug("Converting to Object");
 					try {
-						processObj = objIn.readObject();
+						processObj = (JProcess) objIn.readObject(); // FIXME Not finding class that has been already
+																	// loaded
+						// successfully,
+						// maybe out of scope? How do I set the scope of objIn to be
+						// the same as the URLClassLoader loading the class into
+						// modules:///??
 					} catch (ClassNotFoundException e) {
 						// If de-serialization fails, throw error to client, cleanup
 						e.printStackTrace();
@@ -555,45 +587,37 @@ public final class ConnectionManager {
 			objOut.close();
 			objOut = null;
 			log.debug("Serialization complete!");
-			log.debug("Running dependency check...");
+			log.debug("Running dependency check..."); // DONE Annotations not returning correct value??
 			// CODEAT Check for dependencies
 			if (p.getClass().isAnnotationPresent(JProcess.Depends.class)) {
-				Constructor<?>[] cons = p.getClass().getConstructors();
-				Class<?>[] deps = null;
-				// Find annotated constructor/constructors
-				for (Constructor<?> c : cons) {
-					if (c.isAnnotationPresent(JProcess.Depends.class)) {
-						Depends d = c.getAnnotation(JProcess.Depends.class);
-						// Get dependencies listed in annotation
-						deps = d.dependencies();
-						break;
+				Class<?>[] deps = p.getClass().getAnnotation(JProcess.Depends.class).dependencies();
+				pOut.println(deps.length);
+				for (Class<?> d : deps)
+					if (!sendClass(d, pOut, sc)) {
+						log.err("FAILED TO SEND DEPENDENCY CLASS: " + d.getName());
 					}
-				}
-				if (deps != null) {
-					// Send dependencies over
-					pOut.println(deps.length);
-					for (Class<?> dep : deps) {
-						if (dep != null) {
-							// TODO Quantize and send class
-							if (!sendClass(dep, pOut, sc)) {
-								// FIXME Send error message to console
-							}
-						}
-					}
-				} else {
-					pOut.println(0);
-				}
-			}
+
+				/*
+				 * Constructor<?>[] cons = p.getClass().getConstructors(); Class<?>[] deps =
+				 * null; // Find annotated constructor/constructors for (Constructor<?> c :
+				 * cons) { if (c.isAnnotationPresent(JProcess.Depends.class)) { Depends d =
+				 * c.getAnnotation(JProcess.Depends.class); // Get dependencies listed in
+				 * annotation deps = d.dependencies(); break; } } if (deps != null) { // Send
+				 * dependencies over pOut.println(deps.length); for (Class<?> dep : deps) { if
+				 * (dep != null) { // TODO Quantize and send class if (!sendClass(dep, pOut,
+				 * sc)) { // FIXME Send error message to console } } } } else { pOut.println(0);
+				 * }
+				 */
+			} else
+				pOut.println(0);
 
 			log.debug("Finished Dependency Check");
 
 			log.debug("Sending size of quantized data: " + cBytes.size());
 			pOut.println(cBytes.size());
-			char[] cName = p.getClass().getName().toCharArray();
-			pOut.println(cName.length);
 			log.debug("Sending class name: " + p.getName());
-			for (int i = 0; i < cName.length; i++)
-				pOut.println((int) ((byte) cName[i]));
+			pOut.println(p.getClass().getName());
+
 			log.debug("Sending quantized data...");
 			for (Byte by : cBytes) {
 				pOut.println((int) by);
@@ -655,33 +679,32 @@ public final class ConnectionManager {
 		public Class<?> receiveClass(PrintStream out, Scanner sc) {
 			log.debug("Recieving Quantized class size...");
 			// Get Class size
-			int cSize = sc.nextInt();
+			int cSize = Integer.parseInt(sc.nextLine());
 			log.debug("Got size " + cSize);
 			log.debug("Recieving Quantized class data...");
 			log.debug("Getting name...");
-			int cNameSize = sc.nextInt();
-			log.debug("Got name size " + cNameSize);
-			char[] cNameArr = new char[cNameSize];
-			for (int i = 0; i < cNameSize; i++)
-				cNameArr[i] = (char) sc.nextInt();
-			String cName = new String(cNameArr);
-			cNameArr = null;
+
+			String cName = sc.nextLine();
 			log.debug("Got name: " + cName);
 			byte[] cBytes = new byte[cSize];
 			// Receive Class
 			for (int i = 0; i < cSize; i++) {
 				cBytes[i] = (byte) sc.nextInt();
 			}
+			sc.nextLine();
 			log.log("Realizing Quantized class...");
 			// Load class from bytes
 			// Save 'c' for a bit so GC doesn't remove the class from mem
+			
+			//FIXME Possibly not loading class into correct package hierarchy??
 			Class<?> c = loader.getClass(cName, cBytes);
+			log.debug("Loaded class: " + c.getName() + " : " + c.getPackage().getName()); //Package returning NULL
 			return c;
 		}
 
 		public boolean sendClass(Class<?> c, PrintStream out, Scanner sc) throws IOException {
-			String classPath = c.getName().replace('.', '/') + ".class";
-			InputStream cin = c.getClassLoader().getResourceAsStream(classPath);
+			String classPath = c.getName().replace('/', '.');
+			InputStream cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/') + ".class");
 			LinkedList<Byte> dat = new LinkedList<Byte>();
 			int b;
 			while ((b = cin.read()) != -1) {
@@ -691,22 +714,11 @@ public final class ConnectionManager {
 			out.println(dat.size());
 
 			log.debug("Sending class name " + classPath);
-			char[] cName = classPath.toCharArray();
-			log.debug("Sending class name size " + cName.length);
-			out.println(cName.length);
-			for (char ch : cName) {
-				out.print(ch);
-			}
+			out.println(classPath);
+
 			// Send serialized process to server
 			for (int i = 0; i < dat.size(); i++) {
 				out.println((int) dat.get(i));
-			}
-			// Wait for a response
-			String response = sc.nextLine();
-			// If response is FAILURE, close, cleanup
-			if (response.startsWith("FAIL")) {
-				log.err(response);
-				return false;
 			}
 			log.debug("Process sent");
 			return true;

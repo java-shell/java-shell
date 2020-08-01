@@ -3,9 +3,10 @@ package terra.shell.utils;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.List;
+import java.lang.annotation.Target;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -60,7 +61,7 @@ public abstract class JProcess implements Serializable {
 	public final void reInitialize() {
 		init();
 	}
-	
+
 	public final void reInitialize(Class<?>[] deps) {
 		this.deps = deps;
 		init();
@@ -134,14 +135,14 @@ public abstract class JProcess implements Serializable {
 	public final boolean run() {
 		stop = false;
 		isGoing = true;
-		//Create a new thread in which to run this process
+		// Create a new thread in which to run this process
 		t = new Thread(new Runnable() {
 			public void run() {
-				//Add the process to the process manager (JSHProcesses)
+				// Add the process to the process manager (JSHProcesses)
 				setUUID(UUID.randomUUID());
 				JSHProcesses.addProcess(me);
 				try {
-					//Run the task assigned to this process
+					// Run the task assigned to this process
 					if (start())
 						;
 					else
@@ -149,7 +150,7 @@ public abstract class JProcess implements Serializable {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-				//Cleanup
+				// Cleanup
 				stop();
 				t.interrupt();
 				isGoing = false;
@@ -160,12 +161,12 @@ public abstract class JProcess implements Serializable {
 		});
 		t.setName(getName());
 		try {
-			//Run the thread which contains the task to be executed
+			// Run the thread which contains the task to be executed
 			t.start();
 			boolean suspended = false;
-			//Simple process monitor
+			// Simple process monitor
 			while (!t.isInterrupted() && !stop && isGoing) {
-				//Check every 20ms if the process is either suspended, or stopped
+				// Check every 20ms if the process is either suspended, or stopped
 				Thread.sleep(20);
 				if (suspend & !suspended) {
 					t.wait();
@@ -181,12 +182,12 @@ public abstract class JProcess implements Serializable {
 			e.printStackTrace();
 		}
 		try {
-			//If the process has completed, run the stop procedure from the Process Manager
+			// If the process has completed, run the stop procedure from the Process Manager
 			JSHProcesses.stopProcess(me);
 			if (log == null) {
 				log.log("LOG");
 			}
-			//Cleanup
+			// Cleanup
 			LogManager.removeLogger(log);
 			halt();
 		} catch (Exception e) {
@@ -352,8 +353,10 @@ public abstract class JProcess implements Serializable {
 	// If the JProcess is a nested class, be sure to include the enclosing class as
 	// a dependency
 	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ ElementType.LOCAL_VARIABLE, ElementType.TYPE })
 	public @interface Depends {
 		public Class<?>[] dependencies() default Object.class;
+
 	}
 
 }
