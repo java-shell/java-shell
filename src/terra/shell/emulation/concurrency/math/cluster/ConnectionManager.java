@@ -568,6 +568,8 @@ public final class ConnectionManager {
 			p.prepSerialization();
 			// Send class as stream to other JSH, load class in at other JSH and then
 			// allow for this one to spawn
+			log.debug("Sending class by name of: " + p.getClass().getName() + " : "
+					+ p.getClass().getPackage().getName());
 			log.debug("Quantizing Process...");
 			String classPath = p.getClass().getName().replace('.', '/') + ".class";
 			// Get classes actual bytes in order to reinitialize correctly on host
@@ -686,6 +688,13 @@ public final class ConnectionManager {
 
 			String cName = sc.nextLine();
 			log.debug("Got name: " + cName);
+
+			log.debug("Getting package...");
+			String packageName = sc.nextLine();
+			log.debug("Got package: " + packageName);
+
+			loader.setPackageAssertionStatus(packageName, true);
+
 			byte[] cBytes = new byte[cSize];
 			// Receive Class
 			for (int i = 0; i < cSize; i++) {
@@ -695,15 +704,18 @@ public final class ConnectionManager {
 			log.log("Realizing Quantized class...");
 			// Load class from bytes
 			// Save 'c' for a bit so GC doesn't remove the class from mem
-			
-			//FIXME Possibly not loading class into correct package hierarchy??
+
+			// FIXME Possibly not loading class into correct package hierarchy??
 			Class<?> c = loader.getClass(cName, cBytes);
-			log.debug("Loaded class: " + c.getName() + " : " + c.getPackage().getName()); //Package returning NULL
+			log.debug("Loaded class: " + c.getName() + " : " + c.getPackage().getName()); // Package returning NULL
+			loader.setPackageAssertionStatus("", false);
 			return c;
 		}
 
 		public boolean sendClass(Class<?> c, PrintStream out, Scanner sc) throws IOException {
 			String classPath = c.getName().replace('/', '.');
+			String packageName = c.getPackage().getName();
+			log.debug("Sending class by name of: " + c.getCanonicalName() + " : " + c.getPackage().getName());
 			InputStream cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/') + ".class");
 			LinkedList<Byte> dat = new LinkedList<Byte>();
 			int b;
@@ -715,6 +727,9 @@ public final class ConnectionManager {
 
 			log.debug("Sending class name " + classPath);
 			out.println(classPath);
+
+			log.debug("Sending package name " + packageName);
+			out.println(packageName);
 
 			// Send serialized process to server
 			for (int i = 0; i < dat.size(); i++) {
