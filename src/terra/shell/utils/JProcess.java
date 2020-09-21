@@ -10,6 +10,7 @@ import java.lang.annotation.Target;
 import java.util.Scanner;
 import java.util.UUID;
 
+import jdk.internal.org.objectweb.asm.commons.Method;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 import terra.shell.utils.system.JSHProcesses;
@@ -34,10 +35,11 @@ public abstract class JProcess implements Serializable {
 	private transient UUID u;
 	private transient boolean uuidset;
 	private transient Logger log = null;
-	private transient JProcess me = this;
+	private JProcess me = this;
 	private transient InputStream s = null;
 	private Class<?>[] deps;
 	protected transient Scanner sc = null;
+	private transient String name = null;
 	private boolean canBeSerialized = false;
 
 	public JProcess() {
@@ -64,11 +66,12 @@ public abstract class JProcess implements Serializable {
 
 	public final void reInitialize(Class<?>[] deps) {
 		this.deps = deps;
-		init();
+		reInitialize();
 	}
 
 	public final void prepSerialization() {
 		log = null;
+		this.name = getName();
 	}
 
 	/**

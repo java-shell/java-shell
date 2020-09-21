@@ -13,6 +13,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -29,6 +30,8 @@ import terra.shell.utils.JProcess;
 import terra.shell.utils.system.JSHClassLoader;
 
 public final class ConnectionManager {
+
+	private JSHClassLoader loader;
 
 	private LinkedList<Node> nodes = new LinkedList<>();
 	private Logger log = LogManager.getLogger("ClusterManager");
@@ -83,6 +86,11 @@ public final class ConnectionManager {
 		}
 		log.log("Successfully loaded config");
 		// Start LocalServer
+		try {
+			loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
+		} catch (MalformedURLException e1) {
+			e1.printStackTrace();
+		}
 		ls = new LocalServer();
 		if (ls.ss == null) {
 			log.err("Failed to start server on localhost:" + port);
@@ -284,13 +292,14 @@ public final class ConnectionManager {
 		private final ServerSocket ss = createServer();
 		private int connections = 0;
 		private ArrayList<JProcess> processes = new ArrayList<JProcess>();
-		private JSHClassLoader loader;
 
 		public LocalServer() {
 			try {
 				// Acquire a classloader for loaded objects in Active Processing, use the same
 				// class scope as Commands and Modules to allow for interaction between both
-				loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
+				// loader = (JSHClassLoader)
+				// this.getClass().getClassLoader().getSystemClassLoader();
+				// loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -408,32 +417,15 @@ public final class ConnectionManager {
 					}
 					log.debug("Done receiving process");
 					// De-serialize and instantiate process
-					ObjectInputStream objIn;
+					JProcessRealizer objIn;
 					try {
-						objIn = (ObjectInputStream) loader.loadClass(ObjectInputStream.class.getCanonicalName())
-								.getConstructor(InputStream.class) // Attempt
-								// to
-								// initialize
-								// ObjectInputStream
-								// in
-								// scope
-								// of
-								// modules:///?
-								// Might
-								// allow -FAILURE-
-								// access
-								// to
-								// scope
-								// of
-								// modules:///?
-								.newInstance(new ByteArrayInputStream(ser));
+						objIn = new JProcessRealizer(new ByteArrayInputStream(ser));
+						objIn.setClassLoader(loader);
 
 						// TODO Try to instantiate objIn as JSHClassLoader
-					} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
-							| IllegalArgumentException | InvocationTargetException | NoSuchMethodException
-							| SecurityException e) {
+					} catch (IllegalArgumentException | SecurityException e) {
 						e.printStackTrace();
-						objIn = new ObjectInputStream(new ByteArrayInputStream(ser));
+						objIn = new JProcessRealizer(new ByteArrayInputStream(ser));
 					}
 					JProcess processObj;
 					log.debug("Converting to Object");
@@ -520,7 +512,7 @@ public final class ConnectionManager {
 							}
 						}
 					});
-					processMonitor.setName("ProcessMonitor:" + process.getName() + "-" + process.getUUID().toString());
+					processMonitor.setName("ProcessMonitor:" + process.getName());
 					process = null;
 					processMonitor.run();
 				}
@@ -620,6 +612,9 @@ public final class ConnectionManager {
 			log.debug("Sending class name: " + p.getName());
 			pOut.println(p.getClass().getName());
 
+			log.debug("Sending package name: " + p.getClass().getPackage().getName());
+			pOut.println(p.getClass().getPackage().getName());
+
 			log.debug("Sending quantized data...");
 			for (Byte by : cBytes) {
 				pOut.println((int) by);
@@ -687,6 +682,10 @@ public final class ConnectionManager {
 			log.debug("Getting name...");
 
 			String cName = sc.nextLine();
+			log.debug(cName);
+			String cNamePart[] = cName.split("\\.");
+			log.debug(cNamePart.toString());
+			cName = cNamePart[cNamePart.length - 1];
 			log.debug("Got name: " + cName);
 
 			log.debug("Getting package...");
@@ -706,8 +705,8 @@ public final class ConnectionManager {
 			// Save 'c' for a bit so GC doesn't remove the class from mem
 
 			// FIXME Possibly not loading class into correct package hierarchy??
-			Class<?> c = loader.getClass(cName, cBytes);
-			log.debug("Loaded class: " + c.getName() + " : " + c.getPackage().getName()); // Package returning NULL
+			Class<?> c = loader.getClass(packageName + "." + cName, cBytes);
+			log.debug("Loaded class: " + c.getName()); // Package returning NULL
 			loader.setPackageAssertionStatus("", false);
 			return c;
 		}
