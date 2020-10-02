@@ -100,6 +100,16 @@ public abstract class JProcess implements Serializable {
 	}
 
 	/**
+	 * Get final return value for entire process after process completion, if
+	 * desired
+	 * 
+	 * @return Object[] of values to be parsed for use, or NULL if not used
+	 */
+	public Object[] getReturn() {
+		return null;
+	}
+
+	/**
 	 * Stops this process, if not otherwise changed this code will simply kill the
 	 * process and clean up after it. This is not a guaranteed clean kill switch,
 	 * and can cause deadlocks if the process is not properly informed of its
