@@ -103,9 +103,9 @@ public abstract class JProcess implements Serializable {
 	 * Get final return value for entire process after process completion, if
 	 * desired
 	 * 
-	 * @return Object[] of values to be parsed for use, or NULL if not used
+	 * @return ReturnValue to be parsed for use, or NULL if not used
 	 */
-	public Object[] getReturn() {
+	public ReturnValue getReturn() {
 		return null;
 	}
 
@@ -370,6 +370,10 @@ public abstract class JProcess implements Serializable {
 	public @interface Depends {
 		public Class<?>[] dependencies() default Object.class;
 
+	}
+
+	public @interface ReturnType {
+		public terra.shell.utils.system.ReturnType getReturnType() default terra.shell.utils.system.ReturnType.VOID;
 	}
 
 }

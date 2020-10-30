@@ -478,6 +478,25 @@ public final class ConnectionManager {
 							if (!procMon.isRunning())
 								procMon.run();
 							// Check if process is active every .5 seconds
+							terra.shell.utils.system.ReturnType ret = terra.shell.utils.system.ReturnType.VOID;
+							if (procMon.getClass().isAnnotationPresent(JProcess.ReturnType.class)) {
+								ret = procMon.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
+							}
+							if (ret == terra.shell.utils.system.ReturnType.VOID
+									|| ret == terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
+								// Disconnect IO streams to save bandwidth
+								// TODO
+								try {
+									// Cleanup
+									out.flush();
+									out.close();
+									sc.close();
+									s.close();
+									connections--;
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+							}
 							while (procMon.isRunning()) {
 								try {
 									Thread.sleep(500);
@@ -496,20 +515,27 @@ public final class ConnectionManager {
 									return;
 								}
 							}
+							// Process Return
+							if (ret == terra.shell.utils.system.ReturnType.SYNCHRONOUS) {
+								// TODO Return
+								try {
+									// Cleanup
+									out.flush();
+									out.close();
+									sc.close();
+									s.close();
+									connections--;
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+							} else if (ret == terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
+								//TODO Schedule a return
+
+							}
 							// When process is no longer active, tell client that process is done
 							out.println("PROCESSCOMPLETION:SUCCESS");
 							// Remove process from list of processess
 							processes.remove(procMon);
-							try {
-								// Cleanup
-								out.flush();
-								out.close();
-								sc.close();
-								s.close();
-								connections--;
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
 						}
 					});
 					processMonitor.setName("ProcessMonitor:" + process.getName());
@@ -590,20 +616,11 @@ public final class ConnectionManager {
 					if (!sendClass(d, pOut, sc)) {
 						log.err("FAILED TO SEND DEPENDENCY CLASS: " + d.getName());
 					}
-
-				/*
-				 * Constructor<?>[] cons = p.getClass().getConstructors(); Class<?>[] deps =
-				 * null; // Find annotated constructor/constructors for (Constructor<?> c :
-				 * cons) { if (c.isAnnotationPresent(JProcess.Depends.class)) { Depends d =
-				 * c.getAnnotation(JProcess.Depends.class); // Get dependencies listed in
-				 * annotation deps = d.dependencies(); break; } } if (deps != null) { // Send
-				 * dependencies over pOut.println(deps.length); for (Class<?> dep : deps) { if
-				 * (dep != null) { // TODO Quantize and send class if (!sendClass(dep, pOut,
-				 * sc)) { // FIXME Send error message to console } } } } else { pOut.println(0);
-				 * }
-				 */
 			} else
 				pOut.println(0);
+
+			// TODO Check if annotations are sent to node as well, need to check for
+			// returntype at non-source node
 
 			log.debug("Finished Dependency Check");
 
