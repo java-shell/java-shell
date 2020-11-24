@@ -5,12 +5,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
@@ -27,6 +24,7 @@ import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 import terra.shell.utils.JProcess;
+import terra.shell.utils.ReturnValue;
 import terra.shell.utils.system.JSHClassLoader;
 
 public final class ConnectionManager {
@@ -111,8 +109,7 @@ public final class ConnectionManager {
 	/**
 	 * Queue a JProcess to be serialized and sent to another Node for processing
 	 * 
-	 * @param p
-	 *            JProcess to be sent
+	 * @param p   JProcess to be sent
 	 * @param out
 	 * @param in
 	 * @return True if process is succesfully queued, false otherwise
@@ -130,8 +127,7 @@ public final class ConnectionManager {
 	/**
 	 * Ping Node at "ip"
 	 * 
-	 * @param ip
-	 *            IP to ping
+	 * @param ip IP to ping
 	 * @return Latency, in MS
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -233,8 +229,7 @@ public final class ConnectionManager {
 	/**
 	 * Add a Node to use for Clustering
 	 * 
-	 * @param ip
-	 *            IP of Node
+	 * @param ip IP of Node
 	 * @return True if the node was succesfully added, false otherwise
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -253,8 +248,7 @@ public final class ConnectionManager {
 	/**
 	 * Check to see if a Node exists at a given IP
 	 * 
-	 * @param ip
-	 *            IP of node
+	 * @param ip IP of node
 	 * @return True if a node is found, false otherwise
 	 * @throws UnknownHostException
 	 * @throws IOException
@@ -266,10 +260,8 @@ public final class ConnectionManager {
 	/**
 	 * Complete handshake between a pair in order to sync the two
 	 * 
-	 * @param sc
-	 *            Scanner of the remote socket
-	 * @param out
-	 *            PrintStream of the remote socket
+	 * @param sc  Scanner of the remote socket
+	 * @param out PrintStream of the remote socket
 	 */
 	private boolean completeHandshake(Scanner sc, PrintStream out) {
 		log.debug("Starting Handshake");
@@ -518,6 +510,18 @@ public final class ConnectionManager {
 							// Process Return
 							if (ret == terra.shell.utils.system.ReturnType.SYNCHRONOUS) {
 								// TODO Return
+								if (procMon.getReturn() == null) {
+									// TODO Deal with no return
+								} else {
+									Object[] returnValue = procMon.getReturn().getReturnValue();
+									ReturnObjectWrapper[] retObj = new ReturnObjectWrapper[returnValue.length];
+									out.println("ret:" + returnValue.length);
+									log.debug("Wrapping " + returnValue.length + " returns");
+									for (int i = 0; i < retObj.length; i++) {
+										retObj[i] = new ReturnObjectWrapper(returnValue[i]);
+									}
+									log.debug("Wrapped returns...");
+								}
 								try {
 									// Cleanup
 									out.flush();
@@ -529,8 +533,8 @@ public final class ConnectionManager {
 									e.printStackTrace();
 								}
 							} else if (ret == terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
-								//TODO Schedule a return
-
+								// TODO Schedule a return
+								ReturnValue rv = procMon.getReturn();
 							}
 							// When process is no longer active, tell client that process is done
 							out.println("PROCESSCOMPLETION:SUCCESS");

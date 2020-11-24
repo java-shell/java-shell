@@ -376,4 +376,16 @@ public abstract class JProcess implements Serializable {
 		public terra.shell.utils.system.ReturnType getReturnType() default terra.shell.utils.system.ReturnType.VOID;
 	}
 
+	public class ReturnObjectWrapper implements Serializable {
+		private Object o;
+
+		public ReturnObjectWrapper(Object o) {
+			this.o = o;
+		}
+
+		public Object getReturnObject() {
+			return o;
+		}
+	}
+
 }
