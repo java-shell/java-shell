@@ -535,11 +535,20 @@ public final class ConnectionManager {
 							} else if (ret == terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
 								// TODO Schedule a return
 								ReturnValue rv = procMon.getReturn();
+								try {
+									sendReturn(procMon.getOrigin(), rv);
+								} catch (Exception e) {
+									e.printStackTrace();
+									log.err("UNABLE TO SEND RETURN TO ORIGIN: " + procMon.getOrigin().toString());
+									for (int ie = 0; ie < 5; ie++)
+										log.err("SERIOUS ERROR");
+								}
 							}
 							// When process is no longer active, tell client that process is done
 							out.println("PROCESSCOMPLETION:SUCCESS");
 							// Remove process from list of processess
 							processes.remove(procMon);
+
 						}
 					});
 					processMonitor.setName("ProcessMonitor:" + process.getName());
@@ -559,8 +568,50 @@ public final class ConnectionManager {
 					// Receive data, interpret whether it is Math based, or method based
 
 				}
+				if (in.equals("RET")) {
+					// TODO Handle ReturnValue reception
+					// Scanner sc
+					// PrintStream out
+					out.println("RECEIVEDAT");
+					Class<?> rvClass = receiveClass(out, sc);
+					try {
+						ReturnValue rv = (ReturnValue) rvClass.newInstance();
+						Object[] value = rv.getReturnValue();
+						// TODO Determine where to place returnvalue
+					} catch (InstantiationException e) {
+						e.printStackTrace();
+					} catch (IllegalAccessException e) {
+						e.printStackTrace();
+					}
+				}
 			}
 			sc.close();
+		}
+
+		@SuppressWarnings("resource")
+		private boolean sendReturn(Inet4Address ip, ReturnValue rv) throws IOException {
+			log.debug("Sending return to : " + ip.toString());
+			Socket s = new Socket(ip.getHostAddress(), port);
+			Scanner sc = new Scanner(s.getInputStream());
+			PrintStream out = new PrintStream(s.getOutputStream());
+
+			completeHandshake(sc, out);
+
+			out.println("RET");
+			log.debug("Sent RET");
+
+			final String nextLine = sc.nextLine();
+			if (!nextLine.equals("RECEIVEDAT")) {
+				log.debug("Server incorrectly responded, expected\"RECEIVEDAT\" got \"" + nextLine + "\"");
+				s.close();
+				sc.close();
+				out.close();
+				return false;
+			}
+
+			sendClass(rv.getClass(), out, sc);
+			// TODO Send return
+			return true;
 		}
 
 		// Add I/O redirection

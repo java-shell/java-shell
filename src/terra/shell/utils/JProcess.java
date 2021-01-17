@@ -7,10 +7,12 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.rmi.UnknownHostException;
 import java.util.Scanner;
 import java.util.UUID;
 
-import jdk.internal.org.objectweb.asm.commons.Method;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 import terra.shell.utils.system.JSHProcesses;
@@ -30,7 +32,7 @@ import terra.shell.utils.system.JSHProcesses;
 public abstract class JProcess implements Serializable {
 
 	private static final long serialVersionUID = -4944113269698016157L;
-	private transient boolean stop, isGoing = true, suspend;
+	private transient boolean stop, isGoing = true, suspend, firstInit = true;
 	private transient Thread t = null;
 	private transient UUID u;
 	private transient boolean uuidset;
@@ -41,12 +43,21 @@ public abstract class JProcess implements Serializable {
 	protected transient Scanner sc = null;
 	private transient String name = null;
 	private boolean canBeSerialized = false;
+	private transient Inet4Address origin;
 
 	public JProcess() {
 		init();
 	}
 
 	private final void init() {
+		if (firstInit) {
+			try {
+				origin = (Inet4Address) Inet4Address.getLocalHost();
+				firstInit = false;
+			} catch (java.net.UnknownHostException e) {
+				e.printStackTrace();
+			}
+		}
 		s = System.in;
 		sc = new Scanner(s);
 		log = LogManager.getLogger(getName());
@@ -54,6 +65,15 @@ public abstract class JProcess implements Serializable {
 
 	protected final Logger getLogger() {
 		return log;
+	}
+
+	/**
+	 * Attain this JProcesses origin node's IP Address
+	 * 
+	 * @return This JProcesses origin node's IP
+	 */
+	public final Inet4Address getOrigin() {
+		return origin;
 	}
 
 	/**
@@ -129,8 +149,7 @@ public abstract class JProcess implements Serializable {
 	 * Sets the UUID of this process, occurs at spawning of process and cannot be
 	 * used to change the UUID later on.
 	 * 
-	 * @param u
-	 *            New UUID to use as the processes UUID.
+	 * @param u New UUID to use as the processes UUID.
 	 */
 	public final void setUUID(UUID u) {
 		if (!uuidset) {
@@ -215,9 +234,8 @@ public abstract class JProcess implements Serializable {
 	/**
 	 * This should only be invoked by JProcesses start(); method
 	 * 
-	 * @param holdup
-	 *            If true, acts like a normal JProcess, if false, excludes process
-	 *            monitoring and suspension capabilities
+	 * @param holdup If true, acts like a normal JProcess, if false, excludes
+	 *               process monitoring and suspension capabilities
 	 * @return True if process executes successfully
 	 */
 	public final boolean run(final boolean holdup) {
@@ -311,8 +329,7 @@ public abstract class JProcess implements Serializable {
 	/**
 	 * Change the OutputStream that this process will write to.
 	 * 
-	 * @param out
-	 *            The new OutputStream to be written to.
+	 * @param out The new OutputStream to be written to.
 	 */
 	public final void setOutputStream(OutputStream out) {
 		log.setOutputStream(out);
@@ -331,8 +348,7 @@ public abstract class JProcess implements Serializable {
 	 * Redirect this processes input, will create a new Scanner() object with this
 	 * InputStream.
 	 * 
-	 * @param s
-	 *            New InputStream to read from.
+	 * @param s New InputStream to read from.
 	 */
 	public final void redirectIn(InputStream s) {
 		this.s = s;
@@ -372,6 +388,8 @@ public abstract class JProcess implements Serializable {
 
 	}
 
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ ElementType.LOCAL_VARIABLE, ElementType.TYPE })
 	public @interface ReturnType {
 		public terra.shell.utils.system.ReturnType getReturnType() default terra.shell.utils.system.ReturnType.VOID;
 	}
