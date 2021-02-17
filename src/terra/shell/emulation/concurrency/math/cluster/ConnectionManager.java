@@ -26,6 +26,7 @@ import terra.shell.logging.Logger;
 import terra.shell.utils.JProcess;
 import terra.shell.utils.ReturnValue;
 import terra.shell.utils.system.JSHClassLoader;
+import terra.shell.utils.system.JSHProcesses;
 
 public final class ConnectionManager {
 
@@ -575,12 +576,16 @@ public final class ConnectionManager {
 					out.println("RECEIVEDAT");
 					Class<?> rvClass = receiveClass(out, sc);
 					try {
+						//Receive and parse new ReturnValue
 						ReturnValue rv = (ReturnValue) rvClass.newInstance();
-						Object[] value = rv.getReturnValue();
+						//Process the ReturnValue through the selected process
+						JSHProcesses.getProcess(rv.getProcessID()).processReturn(rv);
 						// TODO Determine where to place returnvalue
 					} catch (InstantiationException e) {
 						e.printStackTrace();
 					} catch (IllegalAccessException e) {
+						e.printStackTrace();
+					} catch(Exception e) {
 						e.printStackTrace();
 					}
 				}

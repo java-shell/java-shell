@@ -63,6 +63,10 @@ public class JSHProcesses {
 	public static JProcess getProcess(String jp) {
 		return processes.get(jp);
 	}
+	
+	public static JProcess getProcess(UUID id) {
+		return processByUUID.get(id);
+	}
 
 	/**
 	 * Halt a JProcess by its object

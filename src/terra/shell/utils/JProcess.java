@@ -307,6 +307,12 @@ public abstract class JProcess implements Serializable {
 		return true;
 
 	}
+	
+	/**
+	 * Receive ReturnValue object and process it accordingly, default does nothing
+	 * @param rv ReturnValue object to be processed
+	 */
+	public void processReturn(ReturnValue rv) {};
 
 	/**
 	 * Gives the UUID of this process, as generated at the processes spawning.
