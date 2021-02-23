@@ -590,7 +590,7 @@ public final class ConnectionManager {
 							return;
 						}
 
-						receiveClass(out, sc);
+						//receiveClass(out, sc);
 
 						ByteArrayInputStream bin = new ByteArrayInputStream(dat);
 						JProcessRealizer objIn = new JProcessRealizer(bin);
@@ -629,7 +629,7 @@ public final class ConnectionManager {
 				return false;
 			}
 
-			sendClass(rv.getClass(), out, sc);
+			//sendClass(rv.getClass(), out, sc);
 
 			// TODO Serialize ReturnValue instead of resending class, class must already
 			// exist on origin anyways
