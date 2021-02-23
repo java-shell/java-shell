@@ -19,6 +19,7 @@ public class ByteClassLoader extends URLClassLoader {
 	public Class<?> getClass(byte[] b) {
 		Class<?> tmp = defineClass(b, 0, b.length);
 		resolveClass(tmp);
+		LogManager.out.println("Resolved class with name: "+tmp.getName());
 		return tmp;
 	}
 
