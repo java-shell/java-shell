@@ -831,11 +831,17 @@ public final class ConnectionManager {
 				cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/'));
 			if (cin == null) {
 				Enumeration<URL> res = c.getClassLoader().getResources(c.getName().replace('.', '/'));
-				log.err(res.toString());
+				while (res.hasMoreElements()) {
+					log.err(res.nextElement().toString());
+				}
 				res = c.getClassLoader().getResources(c.getName());
-				log.err(res.toString());
+				while (res.hasMoreElements()) {
+					log.err(res.nextElement().toString());
+				}
 				res = c.getClassLoader().getResources(packageName);
-				log.err(res.toString());
+				while (res.hasMoreElements()) {
+					log.err(res.nextElement().toString());
+				}
 				log.err("Failed to find resource: " + c.getCanonicalName());
 			}
 			LinkedList<Byte> dat = new LinkedList<Byte>();
