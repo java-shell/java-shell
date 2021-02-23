@@ -827,7 +827,7 @@ public final class ConnectionManager {
 			if (cin == null)
 				cin = c.getResourceAsStream(c.getName().replace('.', '/') + ".class");
 			if (cin == null)
-				cin = loader.getResourceAsStream(c.getName().replace('.', '/'));
+				cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/'));
 			if(cin == null) {
 				log.err("Failed to find resource: "+c.getCanonicalName());
 			}
