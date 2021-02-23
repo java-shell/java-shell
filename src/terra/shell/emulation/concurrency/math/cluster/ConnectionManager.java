@@ -577,6 +577,7 @@ public final class ConnectionManager {
 					// PrintStream out
 					out.println("RECEIVEDAT");
 					try {
+						receiveClass(out, sc);
 						int datSize = Integer.parseInt(sc.nextLine());
 						log.debug("Receiving ReturnObject of size " + datSize);
 						byte[] dat = new byte[datSize];
@@ -589,8 +590,6 @@ public final class ConnectionManager {
 							dat = null;
 							return;
 						}
-
-						//receiveClass(out, sc);
 
 						ByteArrayInputStream bin = new ByteArrayInputStream(dat);
 						JProcessRealizer objIn = new JProcessRealizer(bin);
@@ -629,7 +628,7 @@ public final class ConnectionManager {
 				return false;
 			}
 
-			//sendClass(rv.getClass(), out, sc);
+			sendClass(rv.getClass(), out, sc);
 
 			// TODO Serialize ReturnValue instead of resending class, class must already
 			// exist on origin anyways
