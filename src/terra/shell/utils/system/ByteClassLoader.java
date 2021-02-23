@@ -23,14 +23,14 @@ public class ByteClassLoader extends URLClassLoader {
 	public Class<?> getClass(byte[] b) {
 		Class<?> tmp = defineClass(b, 0, b.length);
 		resolveClass(tmp);
-		loaded.put(tmp.getName(), b);
+		loaded.put(tmp.getName() + ".class", b);
 		return tmp;
 	}
 
 	public Class<?> getClass(String name, byte[] b) {
 		Class<?> tmp = defineClass(name, b, 0, b.length);
 		resolveClass(tmp);
-		loaded.put(tmp.getName(), b);
+		loaded.put(tmp.getName()+ ".class", b);
 		return tmp;
 	}
 	
