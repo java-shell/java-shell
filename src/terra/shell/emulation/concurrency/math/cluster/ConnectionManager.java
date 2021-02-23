@@ -5,7 +5,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -17,6 +16,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.Scanner;
 
@@ -822,14 +822,21 @@ public final class ConnectionManager {
 			InputStream cin;
 			// TODO Fix issue with sending dynamically loaded classes, possibly need to keep
 			// a copy of the classes bytecode in memory until completely finished.
-			// MAJOR con of this is memory use will literally double, so possibly consider better way?
+			// MAJOR con of this is memory use will literally double, so possibly consider
+			// better way?
 			cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/') + ".class");
 			if (cin == null)
 				cin = c.getResourceAsStream(c.getName().replace('.', '/') + ".class");
 			if (cin == null)
 				cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/'));
-			if(cin == null) {
-				log.err("Failed to find resource: "+c.getCanonicalName());
+			if (cin == null) {
+				Enumeration<URL> res = c.getClassLoader().getResources(c.getName().replace('.', '/'));
+				log.err(res.toString());
+				res = c.getClassLoader().getResources(c.getName());
+				log.err(res.toString());
+				res = c.getClassLoader().getResources(packageName);
+				log.err(res.toString());
+				log.err("Failed to find resource: " + c.getCanonicalName());
 			}
 			LinkedList<Byte> dat = new LinkedList<Byte>();
 			int b;
