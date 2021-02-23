@@ -842,6 +842,10 @@ public final class ConnectionManager {
 				while (res.hasMoreElements()) {
 					log.err(res.nextElement().toString());
 				}
+				res = c.getClassLoader().getResources("ClusterTest.ClusterTestProcReturnValue");
+				while(res.hasMoreElements()) {
+					log.err(res.nextElement().toString());
+				}
 				log.err("Failed to find resource: " + c.getCanonicalName());
 			}
 			LinkedList<Byte> dat = new LinkedList<Byte>();
