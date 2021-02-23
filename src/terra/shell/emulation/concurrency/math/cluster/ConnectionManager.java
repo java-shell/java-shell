@@ -825,27 +825,7 @@ public final class ConnectionManager {
 			// MAJOR con of this is memory use will literally double, so possibly consider
 			// better way?
 			cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/') + ".class");
-			if (cin == null)
-				cin = c.getResourceAsStream(c.getName().replace('.', '/') + ".class");
-			if (cin == null)
-				cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/'));
 			if (cin == null) {
-				Enumeration<URL> res = c.getClassLoader().getResources(c.getName().replace('.', '/'));
-				while (res.hasMoreElements()) {
-					log.err(res.nextElement().toString());
-				}
-				res = c.getClassLoader().getResources(c.getName());
-				while (res.hasMoreElements()) {
-					log.err(res.nextElement().toString());
-				}
-				res = c.getClassLoader().getResources(packageName);
-				while (res.hasMoreElements()) {
-					log.err(res.nextElement().toString());
-				}
-				res = c.getClassLoader().getResources("ClusterTest.ClusterTestProcReturnValue");
-				while(res.hasMoreElements()) {
-					log.err(res.nextElement().toString());
-				}
 				log.err("Failed to find resource: " + c.getCanonicalName());
 			}
 			LinkedList<Byte> dat = new LinkedList<Byte>();

@@ -1,9 +1,10 @@
 package terra.shell.utils.system;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
-
-import terra.shell.logging.LogManager;
+import java.util.HashMap;
 
 /**
  * Just a URLClassLoader wrapper class, used in loading Commands and Modules.
@@ -12,21 +13,32 @@ import terra.shell.logging.LogManager;
  * 
  */
 public class ByteClassLoader extends URLClassLoader {
+	private HashMap<String, byte[]> loaded;
+	
 	public ByteClassLoader(URL[] url) {
 		super(url);
+		loaded = new HashMap<String, byte[]>();
 	}
 
 	public Class<?> getClass(byte[] b) {
 		Class<?> tmp = defineClass(b, 0, b.length);
 		resolveClass(tmp);
-		LogManager.out.println("Resolved class with name: "+tmp.getName());
+		loaded.put(tmp.getName(), b);
 		return tmp;
 	}
 
 	public Class<?> getClass(String name, byte[] b) {
 		Class<?> tmp = defineClass(name, b, 0, b.length);
 		resolveClass(tmp);
-		LogManager.out.println("Resolved class with name: "+tmp.getName());
+		loaded.put(tmp.getName(), b);
 		return tmp;
+	}
+	
+	@Override
+	public InputStream getResourceAsStream(String name) {
+		if(loaded.containsKey(name)) {
+			return new ByteArrayInputStream(loaded.get(name));
+		}
+		return super.getResourceAsStream(name);
 	}
 }
