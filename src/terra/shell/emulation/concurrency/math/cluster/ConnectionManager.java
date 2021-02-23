@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -377,7 +378,7 @@ public final class ConnectionManager {
 					connections++;
 					out.println("RECEIVEDAT");
 
-					log.log("Realizing Quantized class...");
+					log.debug("Realizing Quantized class...");
 					// Load class from bytes
 					// Save 'c' for a bit so GC doesn't remove the class from mem
 					// DONE Add reception for dependency classes (Untested)
@@ -389,14 +390,14 @@ public final class ConnectionManager {
 					for (int i = 0; i < numDeps; i++) {
 						classDeps[i] = receiveClass(out, sc);
 					}
-					Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
+					final Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
 					try {
 						JProcess p = (JProcess) c.newInstance(); // DONE Class not being realized properly, need deps
 					} catch (Exception e) {
 						e.printStackTrace();
 						out.println("FAIL:" + e.getMessage());
 					}
-					log.log("Realized " + c.getName());
+					log.debug("Realized " + c.getName());
 					// Receive size of serialized process
 					int size = sc.nextInt();
 					// Receive process priority of process
@@ -457,7 +458,6 @@ public final class ConnectionManager {
 						return;
 					}
 					// Free up space, at this point 'c' is not needed
-					c = null;
 					final JProcess procMon = process;
 					out.println("RUNNING");
 					processes.add(procMon);
@@ -475,21 +475,7 @@ public final class ConnectionManager {
 							if (procMon.getClass().isAnnotationPresent(JProcess.ReturnType.class)) {
 								ret = procMon.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
 							}
-							if (ret == terra.shell.utils.system.ReturnType.VOID
-									|| ret == terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
-								// Disconnect IO streams to save bandwidth
-								// TODO
-								try {
-									// Cleanup
-									out.flush();
-									out.close();
-									sc.close();
-									s.close();
-									connections--;
-								} catch (IOException e) {
-									e.printStackTrace();
-								}
-							}
+
 							while (procMon.isRunning()) {
 								try {
 									Thread.sleep(500);
@@ -509,7 +495,23 @@ public final class ConnectionManager {
 								}
 							}
 							// Process Return
+							if (ret == terra.shell.utils.system.ReturnType.VOID) {
+								log.debug("VOID");
+								// Disconnect IO streams to save bandwidth
+								// TODO
+								try {
+									// Cleanup
+									out.flush();
+									out.close();
+									sc.close();
+									s.close();
+									connections--;
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+							}
 							if (ret == terra.shell.utils.system.ReturnType.SYNCHRONOUS) {
+								log.debug("SYNCHRONOUS");
 								// TODO Return
 								if (procMon.getReturn() == null) {
 									// TODO Deal with no return
@@ -535,6 +537,7 @@ public final class ConnectionManager {
 								}
 							} else if (ret == terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
 								// TODO Schedule a return
+								log.debug("ASYNC");
 								ReturnValue rv = procMon.getReturn();
 								try {
 									sendReturn(procMon.getOrigin(), rv);
@@ -549,7 +552,6 @@ public final class ConnectionManager {
 							out.println("PROCESSCOMPLETION:SUCCESS");
 							// Remove process from list of processess
 							processes.remove(procMon);
-
 						}
 					});
 					processMonitor.setName("ProcessMonitor:" + process.getName());
@@ -574,18 +576,31 @@ public final class ConnectionManager {
 					// Scanner sc
 					// PrintStream out
 					out.println("RECEIVEDAT");
-					Class<?> rvClass = receiveClass(out, sc);
 					try {
-						//Receive and parse new ReturnValue
-						ReturnValue rv = (ReturnValue) rvClass.newInstance();
-						//Process the ReturnValue through the selected process
+						int datSize = Integer.parseInt(sc.nextLine());
+						log.debug("Receiving ReturnObject of size " + datSize);
+						byte[] dat = new byte[datSize];
+						for (int i = 0; i < datSize; i++) {
+							dat[i] = (byte) sc.nextInt();
+						}
+						sc.nextLine();
+						if (!sc.nextLine().equalsIgnoreCase("DONE")) {
+							log.err("DID NOT RECEIVE \"DONE\" FROM RET SENDER");
+							dat = null;
+							return;
+						}
+
+						receiveClass(out, sc);
+
+						ByteArrayInputStream bin = new ByteArrayInputStream(dat);
+						JProcessRealizer objIn = new JProcessRealizer(bin);
+						objIn.setClassLoader(loader);
+						// Receive and parse new ReturnValue
+						ReturnValue rv = (ReturnValue) objIn.readObject();
+						// Process the ReturnValue through the selected process
 						JSHProcesses.getProcess(rv.getProcessID()).processReturn(rv);
 						// TODO Determine where to place returnvalue
-					} catch (InstantiationException e) {
-						e.printStackTrace();
-					} catch (IllegalAccessException e) {
-						e.printStackTrace();
-					} catch(Exception e) {
+					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				}
@@ -607,7 +622,7 @@ public final class ConnectionManager {
 
 			final String nextLine = sc.nextLine();
 			if (!nextLine.equals("RECEIVEDAT")) {
-				log.debug("Server incorrectly responded, expected\"RECEIVEDAT\" got \"" + nextLine + "\"");
+				log.debug("Origin incorrectly responded, expected\"RECEIVEDAT\" got \"" + nextLine + "\"");
 				s.close();
 				sc.close();
 				out.close();
@@ -615,6 +630,19 @@ public final class ConnectionManager {
 			}
 
 			sendClass(rv.getClass(), out, sc);
+
+			// TODO Serialize ReturnValue instead of resending class, class must already
+			// exist on origin anyways
+			ByteArrayOutputStream bout = new ByteArrayOutputStream();
+			ObjectOutputStream ins = new ObjectOutputStream(bout);
+			ins.writeObject(rv);
+			byte[] dat = bout.toByteArray();
+			log.debug("Sending ReturnValue size of " + dat.length);
+			out.println(dat.length);
+			for (int i = 0; i < dat.length; i++) {
+				out.println((int) dat[i]);
+			}
+			out.println("DONE");
 			// TODO Send return
 			return true;
 		}
@@ -777,11 +805,10 @@ public final class ConnectionManager {
 				cBytes[i] = (byte) sc.nextInt();
 			}
 			sc.nextLine();
-			log.log("Realizing Quantized class...");
+			log.debug("Realizing Quantized class...");
 			// Load class from bytes
 			// Save 'c' for a bit so GC doesn't remove the class from mem
 
-			// FIXME Possibly not loading class into correct package hierarchy??
 			Class<?> c = loader.getClass(packageName + "." + cName, cBytes);
 			log.debug("Loaded class: " + c.getName()); // Package returning NULL
 			loader.setPackageAssertionStatus("", false);
@@ -792,7 +819,18 @@ public final class ConnectionManager {
 			String classPath = c.getName().replace('/', '.');
 			String packageName = c.getPackage().getName();
 			log.debug("Sending class by name of: " + c.getCanonicalName() + " : " + c.getPackage().getName());
-			InputStream cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/') + ".class");
+			InputStream cin;
+			// TODO Fix issue with sending dynamically loaded classes, possibly need to keep
+			// a copy of the classes bytecode in memory until completely finished.
+			// MAJOR con of this is memory use will literally double, so possibly consider better way?
+			cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/') + ".class");
+			if (cin == null)
+				cin = c.getResourceAsStream(c.getName().replace('.', '/') + ".class");
+			if (cin == null)
+				cin = loader.getResourceAsStream(c.getName().replace('.', '/'));
+			if(cin == null) {
+				log.err("Failed to find resource: "+c.getCanonicalName());
+			}
 			LinkedList<Byte> dat = new LinkedList<Byte>();
 			int b;
 			while ((b = cin.read()) != -1) {

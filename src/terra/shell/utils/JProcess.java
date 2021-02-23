@@ -43,7 +43,7 @@ public abstract class JProcess implements Serializable {
 	protected transient Scanner sc = null;
 	private transient String name = null;
 	private boolean canBeSerialized = false;
-	private transient Inet4Address origin;
+	private Inet4Address origin;
 
 	public JProcess() {
 		init();
