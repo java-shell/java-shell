@@ -6,6 +6,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
 
+import terra.shell.logging.LogManager;
+
 /**
  * Just a URLClassLoader wrapper class, used in loading Commands and Modules.
  * 
@@ -36,6 +38,7 @@ public class ByteClassLoader extends URLClassLoader {
 	
 	@Override
 	public InputStream getResourceAsStream(String name) {
+		LogManager.out.println(name);
 		if(loaded.containsKey(name)) {
 			return new ByteArrayInputStream(loaded.get(name));
 		}
