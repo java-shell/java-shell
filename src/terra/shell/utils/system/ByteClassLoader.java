@@ -3,6 +3,8 @@ package terra.shell.utils.system;
 import java.net.URL;
 import java.net.URLClassLoader;
 
+import terra.shell.logging.LogManager;
+
 /**
  * Just a URLClassLoader wrapper class, used in loading Commands and Modules.
  * 
@@ -23,6 +25,7 @@ public class ByteClassLoader extends URLClassLoader {
 	public Class<?> getClass(String name, byte[] b) {
 		Class<?> tmp = defineClass(name, b, 0, b.length);
 		resolveClass(tmp);
+		LogManager.out.println("Resolved class with name: "+tmp.getName());
 		return tmp;
 	}
 }
