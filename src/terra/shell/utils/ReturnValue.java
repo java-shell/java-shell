@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.UUID;
 
 public abstract class ReturnValue implements Serializable {
-	private final UUID id;
+	private UUID id;
 	
 	public ReturnValue(JProcess p) {
 		id = p.getUUID();

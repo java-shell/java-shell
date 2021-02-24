@@ -15,8 +15,10 @@ import terra.shell.logging.LogManager;
  * 
  */
 public class ByteClassLoader extends URLClassLoader {
+
+	// TODO Find better way to reload dynamically loaded classes
 	private HashMap<String, byte[]> loaded;
-	
+
 	public ByteClassLoader(URL[] url) {
 		super(url);
 		loaded = new HashMap<String, byte[]>();
@@ -35,11 +37,11 @@ public class ByteClassLoader extends URLClassLoader {
 		loaded.put(tmp.getName().replace('.', '/') + ".class", b);
 		return tmp;
 	}
-	
+
 	@Override
 	public InputStream getResourceAsStream(String name) {
 		LogManager.out.println(name);
-		if(loaded.containsKey(name)) {
+		if (loaded.containsKey(name)) {
 			return new ByteArrayInputStream(loaded.get(name));
 		}
 		return super.getResourceAsStream(name);
