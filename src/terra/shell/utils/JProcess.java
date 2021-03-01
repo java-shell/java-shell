@@ -35,6 +35,7 @@ public abstract class JProcess implements Serializable {
 	private transient boolean stop, isGoing = true, suspend, firstInit = true;
 	private transient Thread t = null;
 	private transient UUID u;
+	private UUID sUID;
 	private transient boolean uuidset;
 	private transient Logger log = null;
 	private JProcess me = this;
@@ -50,6 +51,7 @@ public abstract class JProcess implements Serializable {
 	}
 
 	private final void init() {
+		sUID = UUID.randomUUID();
 		if (firstInit) {
 			try {
 				origin = (Inet4Address) Inet4Address.getLocalHost();
@@ -156,6 +158,10 @@ public abstract class JProcess implements Serializable {
 			this.u = u;
 			uuidset = true;
 		}
+	}
+	
+	public final UUID getSUID() {
+		return sUID;
 	}
 
 	/**
