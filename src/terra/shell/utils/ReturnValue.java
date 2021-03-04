@@ -7,7 +7,7 @@ public abstract class ReturnValue implements Serializable {
 	private UUID id;
 	
 	public ReturnValue(JProcess p) {
-		id = p.getSUID();
+		id = p.getUUID();
 	}
 	
 	public final UUID getProcessID() {
