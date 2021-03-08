@@ -37,7 +37,7 @@ public class TerraExecutor {
 				in = new BufferedInputStream(new FileInputStream(new File(path.getPath())));
 			} catch (Exception e1) {
 				e1.printStackTrace();
-				getLogger().log("Failed to open file!");
+				log.log("Failed to open file!");
 			}
 		}
 		ArrayList<Byte> bytes = new ArrayList<Byte>();
@@ -91,8 +91,8 @@ public class TerraExecutor {
 									throw new ArrayIndexOutOfBoundsException();
 								}
 							} catch (Exception e) {
-								getLogger().log("Failed to parse int during SOC! Unable to load classes!");
-								getLogger().log("Error: " + e.getMessage());
+								log.log("Failed to parse int during SOC! Unable to load classes!");
+								log.log("Error: " + e.getMessage());
 								return;
 							}
 							byte[] cb = new byte[bl];
@@ -104,14 +104,14 @@ public class TerraExecutor {
 								tx = (TX) cf.newInstance();
 								hasMain = true;
 							} catch (Exception e) {
-								getLogger().log("Failed to cast main class to TX class");
+								log.log("Failed to cast main class to TX class");
 								return;
 							}
 						}
 					}
 				}
 				if (b == 51) {
-					getLogger().log("Loading Class");
+					log.log("Loading Class");
 					final ArrayList<Character> chars = new ArrayList<Character>();
 					i++;
 					byte tmp, origin;
@@ -137,8 +137,8 @@ public class TerraExecutor {
 								throw new ArrayIndexOutOfBoundsException();
 							}
 						} catch (Exception e) {
-							getLogger().log("Failed to parse integer during SOC! Unable to load classes!");
-							getLogger().log("Error: " + e.getMessage());
+							log.log("Failed to parse integer during SOC! Unable to load classes!");
+							log.log("Error: " + e.getMessage());
 							return;
 						}
 						byte[] cb = new byte[bl];
@@ -153,7 +153,7 @@ public class TerraExecutor {
 			if (tx != null)
 				tx.start();
 			else {
-				getLogger().log("Failed to launch TX File, Unable to find main class within file!");
+				log.log("Failed to launch TX File, Unable to find main class within file!");
 				return;
 			}
 			tx = null;
