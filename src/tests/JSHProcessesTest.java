@@ -22,6 +22,7 @@ public class JSHProcessesTest {
 		JProcess dummyProcess = new Dir();
 		JSHProcesses.addProcess(dummyProcess);
 		assertEquals(true, JSHProcesses.getProcess(dummyProcess.getUUID()).equals(dummyProcess));
+		assertEquals(true, JSHProcesses.getProcess(dummyProcess.getUUID()).getName().equals(dummyProcess.getName()));
 		JSHProcesses.addProcess(dummyProcess);
 		assertEquals(1, JSHProcesses.getCount());
 	}

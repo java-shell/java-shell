@@ -30,7 +30,7 @@ public class JSHProcesses {
 	 * @param p JProcess to be managed
 	 */
 	public static void addProcess(JProcess p) {
-		if(p.getUUID() != null)
+		if (p.getUUID() != null)
 			return;
 		names.add(p.getName());
 		UUID u = UUID.randomUUID();
@@ -72,6 +72,10 @@ public class JSHProcesses {
 
 	public static JProcess getProcess(UUID id) {
 		return processes.get(id);
+	}
+
+	public static JProcess[] getProcessBySUID(UUID suid) {
+		return processes.getBySUID(suid);
 	}
 
 	/**
@@ -183,7 +187,7 @@ public class JSHProcesses {
 	public static JProcess getCurrent() {
 		return top;
 	}
-	
+
 	public static int getCount() {
 		return processes.size();
 	}
@@ -194,7 +198,7 @@ public class JSHProcesses {
 	}
 
 	private static class ProcessTable extends Hashtable<UUID, JProcess> {
-		Hashtable<ProcessDescriptor, JProcess> descripted;
+		Hashtable<ProcessDescriptor, JProcess> descripted = new Hashtable<ProcessDescriptor, JProcess>();
 
 		public ProcessTable() {
 			descripted = new Hashtable<ProcessDescriptor, JProcess>();
@@ -207,9 +211,20 @@ public class JSHProcesses {
 		public JProcess get(UUID u) {
 			return getByUUID(u);
 		}
-		
+
 		public int size() {
 			return descripted.size();
+		}
+		
+		public void remove(UUID u) {
+			Enumeration<ProcessDescriptor> keys = descripted.keys();
+			while(keys.hasMoreElements()) {
+				ProcessDescriptor pd = keys.nextElement();
+				if(pd.getUUID().equals(u)) {
+					descripted.remove(u);
+					return;
+				}
+			}
 		}
 
 		public JProcess getByUUID(UUID u) {

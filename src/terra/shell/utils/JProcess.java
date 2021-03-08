@@ -177,7 +177,6 @@ public abstract class JProcess implements Serializable {
 		t = new Thread(new Runnable() {
 			public void run() {
 				// Add the process to the process manager (JSHProcesses)
-				setUUID(UUID.randomUUID());
 				JSHProcesses.addProcess(me);
 				try {
 					// Run the task assigned to this process
@@ -252,7 +251,6 @@ public abstract class JProcess implements Serializable {
 		}
 		t = new Thread(new Runnable() {
 			public void run() {
-				setUUID(UUID.randomUUID());
 				JSHProcesses.addProcess(me);
 				try {
 					if (start())
