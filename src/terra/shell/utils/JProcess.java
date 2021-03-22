@@ -8,8 +8,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.rmi.UnknownHostException;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -159,7 +157,7 @@ public abstract class JProcess implements Serializable {
 			uuidset = true;
 		}
 	}
-	
+
 	public final UUID getSUID() {
 		return sUID;
 	}
@@ -220,12 +218,18 @@ public abstract class JProcess implements Serializable {
 		}
 		try {
 			// If the process has completed, run the stop procedure from the Process Manager
-			JSHProcesses.stopProcess(me);
-			if (log == null) {
-				log.log("LOG");
+
+			// TODO Check for Asynchronous ReturnValue, if exists, then zombie the process
+			// (Keep in JSHProcesses) until ReturnValue needs to be evaluated
+			terra.shell.utils.system.ReturnType ret = terra.shell.utils.system.ReturnType.VOID;
+			if (me.getClass().isAnnotationPresent(JProcess.ReturnType.class)) {
+				ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
 			}
-			// Cleanup
-			LogManager.removeLogger(log);
+			if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
+				JSHProcesses.stopProcess(me);
+				// Cleanup
+				LogManager.removeLogger(log);
+			}
 			halt();
 		} catch (Exception e) {
 			LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
@@ -240,7 +244,8 @@ public abstract class JProcess implements Serializable {
 	 * This should only be invoked by JProcesses start(); method
 	 * 
 	 * @param holdup If true, acts like a normal JProcess, if false, excludes
-	 *               process monitoring and suspension capabilities
+	 *               process monitoring and suspension capabilities, is not
+	 *               compatible with PASSIVE clustering
 	 * @return True if process executes successfully
 	 */
 	public final boolean run(final boolean holdup) {
@@ -311,12 +316,14 @@ public abstract class JProcess implements Serializable {
 		return true;
 
 	}
-	
+
 	/**
 	 * Receive ReturnValue object and process it accordingly, default does nothing
+	 * 
 	 * @param rv ReturnValue object to be processed
 	 */
-	public void processReturn(ReturnValue rv) {};
+	public void processReturn(ReturnValue rv) {
+	};
 
 	/**
 	 * Gives the UUID of this process, as generated at the processes spawning.
