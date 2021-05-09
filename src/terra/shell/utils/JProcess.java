@@ -32,8 +32,8 @@ public abstract class JProcess implements Serializable {
 	private static final long serialVersionUID = -4944113269698016157L;
 	private transient boolean stop, isGoing = true, suspend, firstInit = true;
 	private transient Thread t = null;
-	private transient UUID u;
-	private UUID sUID;
+	protected UUID u;
+	private transient UUID sUID;
 	private transient boolean uuidset;
 	private transient Logger log = null;
 	private JProcess me = this;
@@ -45,11 +45,11 @@ public abstract class JProcess implements Serializable {
 	private Inet4Address origin;
 
 	public JProcess() {
+		u = JSHProcesses.getValidUUID();
 		init();
 	}
 
 	private final void init() {
-		sUID = UUID.randomUUID();
 		if (firstInit) {
 			try {
 				origin = (Inet4Address) Inet4Address.getLocalHost();
@@ -142,6 +142,7 @@ public abstract class JProcess implements Serializable {
 			sc.close();
 		sc = null;
 		System.gc();
+		sUID = null;
 	}
 
 	/**
@@ -168,6 +169,7 @@ public abstract class JProcess implements Serializable {
 	 * @return True if the process executed successfully
 	 */
 	public final boolean run() {
+		sUID = UUID.randomUUID();
 		stop = false;
 		isGoing = true;
 		// Create a new thread in which to run this process
@@ -251,6 +253,7 @@ public abstract class JProcess implements Serializable {
 	 * @return True if process executes successfully
 	 */
 	public final boolean run(final boolean holdup) {
+		sUID = UUID.randomUUID();
 		stop = false;
 		isGoing = true;
 		if (!holdup) {

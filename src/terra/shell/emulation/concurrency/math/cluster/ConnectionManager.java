@@ -598,7 +598,7 @@ public final class ConnectionManager {
 						ReturnValue rv = (ReturnValue) objIn.readObject();
 						// Process the ReturnValue through the selected process
 						log.debug("Attempting to find Process of ID: "+rv.getProcessID().toString());
-						JSHProcesses.getProcessBySUID(rv.getProcessID())[0].processReturn(rv);
+						JSHProcesses.getProcess(rv.getSUID()).processReturn(rv);
 						// TODO Determine where to place returnvalue
 					} catch (Exception e) {
 						e.printStackTrace();

@@ -33,15 +33,20 @@ public class JSHProcesses {
 		if (p.getUUID() != null)
 			return;
 		names.add(p.getName());
-		UUID u = UUID.randomUUID();
-		while (true)
-			if (used.contains(u)) {
-				u = UUID.randomUUID();
-			} else
-				break;
+		UUID u = getValidUUID();
 		p.setUUID(u);
 		processes.put(u, p);
 		top = p;
+	}
+	
+	public static UUID getValidUUID() {
+		UUID u = UUID.randomUUID();
+		while(true)
+			if(used.contains(u)) {
+				u = UUID.randomUUID();
+			} else 
+				break;
+		return u;
 	}
 
 	/**
@@ -74,8 +79,8 @@ public class JSHProcesses {
 		return processes.get(id);
 	}
 
-	public static JProcess[] getProcessBySUID(UUID suid) {
-		return processes.getBySUID(suid);
+	public static JProcess[] getProcessByUUID(UUID suid) {
+		return processes.getByUUID(suid);
 	}
 
 	/**
@@ -209,7 +214,7 @@ public class JSHProcesses {
 		}
 
 		public JProcess get(UUID u) {
-			return getByUUID(u);
+			return getBySUID(u);
 		}
 
 		public int size() {
@@ -227,23 +232,23 @@ public class JSHProcesses {
 			}
 		}
 
-		public JProcess getByUUID(UUID u) {
+		public JProcess getBySUID(UUID u) {
 			Enumeration<ProcessDescriptor> keys = descripted.keys();
 			while (keys.hasMoreElements()) {
 				ProcessDescriptor pd = keys.nextElement();
-				if (pd.getUUID().equals(u)) {
+				if (pd.getSID().equals(u)) {
 					return descripted.get(pd);
 				}
 			}
 			return null;
 		}
 
-		public JProcess[] getBySUID(UUID u) {
+		public JProcess[] getByUUID(UUID u) {
 			Enumeration<ProcessDescriptor> keys = descripted.keys();
 			HashSet<JProcess> fnd = new HashSet<JProcess>();
 			while (keys.hasMoreElements()) {
 				ProcessDescriptor pd = keys.nextElement();
-				if (pd.getSID().equals(u)) {
+				if (pd.getUUID().equals(u)) {
 					fnd.add(descripted.get(pd));
 				}
 			}
@@ -277,7 +282,7 @@ public class JSHProcesses {
 			return false;
 		}
 
-		private class ProcessDescriptor {
+		public final class ProcessDescriptor {
 			private final UUID uid, sid;
 			private final String name;
 
