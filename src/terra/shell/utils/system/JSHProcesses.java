@@ -35,7 +35,7 @@ public class JSHProcesses {
 		names.add(p.getName());
 		UUID u = getValidUUID();
 		p.setUUID(u);
-		processes.put(u, p);
+		processes.put(p.getUUID(), p);
 		top = p;
 	}
 	
@@ -90,7 +90,7 @@ public class JSHProcesses {
 	 */
 	public static void stopProcess(JProcess process) {
 		try {
-			if (processes.contains(process.getUUID())) {
+			if (processes.contains(process.getUUID())) { 
 				process.halt();
 				processes.remove(process.getUUID());
 			}
