@@ -233,10 +233,10 @@ public abstract class JProcess implements Serializable {
 				// Cleanup
 				LogManager.removeLogger(log);
 				sUID = null;
+				halt();
 			} else {
 				log.debug("Not halting process "+getName()+ " as process is marked ASYNC");
 			}
-			halt();
 		} catch (Exception e) {
 			LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
 			e.printStackTrace();
