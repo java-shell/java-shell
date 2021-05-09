@@ -656,6 +656,7 @@ public final class ConnectionManager {
 			Socket s = new Socket(ip.getHostAddress(), port);
 			Scanner sc = new Scanner(s.getInputStream());
 			PrintStream pOut = new PrintStream(s.getOutputStream());
+			p.createReturn();
 
 			completeHandshake(sc, pOut);
 
