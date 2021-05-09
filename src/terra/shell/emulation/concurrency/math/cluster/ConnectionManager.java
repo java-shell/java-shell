@@ -597,6 +597,7 @@ public final class ConnectionManager {
 						// Receive and parse new ReturnValue
 						ReturnValue rv = (ReturnValue) objIn.readObject();
 						// Process the ReturnValue through the selected process
+						log.debug("Attempting to find Process of ID: "+rv.getProcessID().toString());
 						JSHProcesses.getProcess(rv.getProcessID()).processReturn(rv);
 						// TODO Determine where to place returnvalue
 					} catch (Exception e) {
@@ -808,7 +809,7 @@ public final class ConnectionManager {
 			// Load class from bytes
 			// Save 'c' for a bit so GC doesn't remove the class from mem
 
-			Class<?> c = loader.getClass(packageName + "." + cName, cBytes);
+			Class<?> c = loader.getClass(packageName + "." + cName, packageName, cBytes);
 			log.debug("Loaded class: " + c.getName()); // Package returning NULL
 			loader.setPackageAssertionStatus("", false);
 			return c;
@@ -816,8 +817,11 @@ public final class ConnectionManager {
 
 		public boolean sendClass(Class<?> c, PrintStream out, Scanner sc) throws IOException {
 			String classPath = c.getName().replace('/', '.');
-			String packageName = c.getPackage().getName();
-			log.debug("Sending class by name of: " + c.getCanonicalName() + " : " + c.getPackage().getName());
+			String packageName = "";
+			if (c.getPackage() != null) {
+				packageName = c.getPackage().getName();
+			}
+			log.debug("Sending class by name of: " + c.getCanonicalName() + " : " + packageName);
 			InputStream cin;
 			// TODO Fix issue with sending dynamically loaded classes, possibly need to keep
 			// a copy of the classes bytecode in memory until completely finished.

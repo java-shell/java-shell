@@ -4,12 +4,12 @@ import java.io.Serializable;
 import java.util.UUID;
 
 public abstract class ReturnValue implements Serializable {
-	private UUID id;
-	
+	protected final UUID id;
+
 	public ReturnValue(JProcess p) {
-		id = p.getUUID();
+		id = p.getSUID();
 	}
-	
+
 	public final UUID getProcessID() {
 		return id;
 	}

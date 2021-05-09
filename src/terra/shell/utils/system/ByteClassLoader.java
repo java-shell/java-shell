@@ -38,6 +38,18 @@ public class ByteClassLoader extends URLClassLoader {
 		return tmp;
 	}
 
+	public Class<?> getClass(String name, String pkg, byte[] b) {
+		try {
+			definePackage(pkg, "", "", "", "", "", "", null);
+		} catch (IllegalArgumentException e) {
+		}
+		;
+		Class<?> tmp = defineClass(name, b, 0, b.length);
+		resolveClass(tmp);
+		loaded.put(tmp.getName().replace('.', '/') + ".class", b);
+		return tmp;
+	}
+
 	@Override
 	public InputStream getResourceAsStream(String name) {
 		LogManager.out.println(name);

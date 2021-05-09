@@ -90,7 +90,6 @@ public abstract class JProcess implements Serializable {
 	}
 
 	public final void prepSerialization() {
-		log = null;
 		this.name = getName();
 	}
 
@@ -226,9 +225,12 @@ public abstract class JProcess implements Serializable {
 				ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
 			}
 			if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
+				log.debug("Process "+getName()+ " not marked ASYNC, removing");
 				JSHProcesses.stopProcess(me);
 				// Cleanup
 				LogManager.removeLogger(log);
+			} else {
+				log.debug("Not halting process "+getName()+ " as process is marked ASYNC");
 			}
 			halt();
 		} catch (Exception e) {
