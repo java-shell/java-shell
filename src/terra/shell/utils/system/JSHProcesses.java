@@ -203,7 +203,7 @@ public class JSHProcesses {
 	}
 
 	private static class ProcessTable extends Hashtable<UUID, JProcess> {
-		Hashtable<ProcessDescriptor, JProcess> descripted = new Hashtable<ProcessDescriptor, JProcess>();
+		private static Hashtable<ProcessDescriptor, JProcess> descripted = new Hashtable<ProcessDescriptor, JProcess>();
 
 		public ProcessTable() {
 			descripted = new Hashtable<ProcessDescriptor, JProcess>();
