@@ -144,7 +144,6 @@ public abstract class JProcess implements Serializable {
 			sc.close();
 		sc = null;
 		System.gc();
-		sUID = null;
 	}
 
 	/**
@@ -233,6 +232,7 @@ public abstract class JProcess implements Serializable {
 				JSHProcesses.stopProcess(me);
 				// Cleanup
 				LogManager.removeLogger(log);
+				sUID = null;
 			} else {
 				log.debug("Not halting process "+getName()+ " as process is marked ASYNC");
 			}
