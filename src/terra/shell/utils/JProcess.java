@@ -288,10 +288,10 @@ public abstract class JProcess implements Serializable {
 						// Cleanup
 						LogManager.removeLogger(log);
 						sUID = null;
-						halt();
 					} else {
 						log.debug("Not halting process "+getName()+ " as process is marked ASYNC");
 					}
+					halt();
 				}
 
 				return;
