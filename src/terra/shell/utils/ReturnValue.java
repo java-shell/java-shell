@@ -7,15 +7,16 @@ import terra.shell.utils.system.JSHProcesses;
 
 public abstract class ReturnValue implements Serializable {
 	protected final UUID uid;
-	protected UUID suid;
+	protected final UUID suid;
 
 	public ReturnValue(JProcess p) {
-		suid = p.getSUID();
-		if(suid == null) {
+		UUID tsuid = p.getSUID();
+		if(tsuid == null) {
 			p.setSUID(UUID.randomUUID());
-			suid = p.getSUID();
+			tsuid = p.getSUID();
 			JSHProcesses.addProcess(p);
 		}
+		suid = tsuid;
 		uid = p.getUUID();
 	}
 
