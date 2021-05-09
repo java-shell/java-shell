@@ -278,9 +278,20 @@ public abstract class JProcess implements Serializable {
 				stop = true;
 
 				if (!holdup) {
-					JSHProcesses.stopProcess(me);
-					LogManager.removeLogger(log);
-					halt();
+					terra.shell.utils.system.ReturnType ret = terra.shell.utils.system.ReturnType.VOID;
+					if (me.getClass().isAnnotationPresent(JProcess.ReturnType.class)) {
+						ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
+					}
+					if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
+						log.debug("Process "+getName()+ " not marked ASYNC, removing");
+						JSHProcesses.stopProcess(me);
+						// Cleanup
+						LogManager.removeLogger(log);
+						sUID = null;
+						halt();
+					} else {
+						log.debug("Not halting process "+getName()+ " as process is marked ASYNC");
+					}
 				}
 
 				return;
