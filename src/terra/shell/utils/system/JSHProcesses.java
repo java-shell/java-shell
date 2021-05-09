@@ -30,8 +30,6 @@ public class JSHProcesses {
 	 * @param p JProcess to be managed
 	 */
 	public static void addProcess(JProcess p) {
-		if (p.getUUID() != null)
-			return;
 		names.add(p.getName());
 		UUID u = getValidUUID();
 		p.setUUID(u);
@@ -204,10 +202,6 @@ public class JSHProcesses {
 
 	private static class ProcessTable extends Hashtable<UUID, JProcess> {
 		private static Hashtable<ProcessDescriptor, JProcess> descripted = new Hashtable<ProcessDescriptor, JProcess>();
-
-		public ProcessTable() {
-			descripted = new Hashtable<ProcessDescriptor, JProcess>();
-		}
 
 		public JProcess put(UUID u, JProcess p) {
 			return descripted.put(new ProcessDescriptor(u, p.getSUID(), p.getName()), p);
