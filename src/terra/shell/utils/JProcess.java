@@ -127,6 +127,8 @@ public abstract class JProcess implements Serializable {
 	public ReturnValue getReturn() {
 		return null;
 	}
+	
+	public void createReturn() {}
 
 	/**
 	 * Stops this process, if not otherwise changed this code will simply kill the
@@ -337,6 +339,13 @@ public abstract class JProcess implements Serializable {
 	 */
 	public final UUID getUUID() {
 		return u;
+	}
+	
+	public final void setSUID(UUID sUID) {
+		if(isRunning()) {
+			return;
+		}
+		this.sUID = sUID;
 	}
 
 	/**

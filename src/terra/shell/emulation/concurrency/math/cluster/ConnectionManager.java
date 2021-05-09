@@ -672,6 +672,7 @@ public final class ConnectionManager {
 			}
 
 			p.prepSerialization();
+			p.getReturn();
 			// Send class as stream to other JSH, load class in at other JSH and then
 			// allow for this one to spawn
 			log.debug("Sending class by name of: " + p.getClass().getName() + " : "
