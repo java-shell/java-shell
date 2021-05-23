@@ -28,7 +28,12 @@ public abstract class ReturnValue implements Serializable {
 		return suid;
 	}
 
+	/**
+	 * @deprecated Use {@link #setValues(Object...)} instead
+	 */
 	public abstract boolean processReturn(Object... values);
+
+	public abstract boolean setValues(Object... values);
 
 	public abstract Object[] getReturnValue();
 	
