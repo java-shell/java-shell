@@ -31,4 +31,5 @@ public abstract class ReturnValue implements Serializable {
 	public abstract boolean processReturn(Object... values);
 
 	public abstract Object[] getReturnValue();
+	
 }
