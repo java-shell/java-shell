@@ -341,7 +341,8 @@ public class Launch {
 		File[] cf = confD.listFiles();
 		for (int i = 0; i < cf.length; i++) {
 			// Create Configuration object wrappers for conf files
-			confs.put(cf[i].getName(), new Configuration(cf[i]));
+			if (!cf[i].isDirectory())
+				confs.put(cf[i].getName(), new Configuration(cf[i]));
 		}
 	}
 
