@@ -23,6 +23,11 @@ public class ByteClassLoader extends URLClassLoader {
 
 	// TODO Find better way to reload dynamically loaded classes
 	protected HashMap<String, ClassData> loaded;
+	
+	public ByteClassLoader(URL[] url, ClassLoader parent) {
+		super(url, parent);
+		loaded = new HashMap<String, ClassData>();
+	}
 
 	public ByteClassLoader(URL[] url) {
 		super(url);
