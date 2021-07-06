@@ -185,7 +185,7 @@ public class Launch {
 		// values
 		if (getConfig("system") == null) {
 			log.log(fPrefix + "config/system not found, creating!");
-			final File sysFile = new File(fPrefix + "system");
+			final File sysFile = new File(fPrefix + "config/system");
 			try {
 				if (!sysFile.createNewFile()) {
 					throw new IOException();
