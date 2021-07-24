@@ -84,10 +84,6 @@ public abstract class JProcess implements Serializable {
 		init();
 	}
 
-	public final void reInitialize(Class<?>[] deps) {
-		this.deps = deps;
-		reInitialize();
-	}
 
 	public final void prepSerialization() {
 		this.name = getName();

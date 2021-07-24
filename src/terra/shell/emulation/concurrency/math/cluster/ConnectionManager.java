@@ -16,9 +16,12 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Scanner;
+import java.util.UUID;
+import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 
 import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
@@ -32,6 +35,11 @@ import terra.shell.utils.system.JSHProcesses;
 public final class ConnectionManager {
 
 	private JSHClassLoader loader;
+	// TODO Categorize Classloaders by UUID in order to allow deloading of classes
+	// by removing the classloader (Possibly serialVersionUID??
+	// TODO Need to reserve UUID slot when passive load call is received, should set
+	// UUID upon request, not instantiation
+	private Hashtable<Long, JSHClassLoader> loadersByUUID;
 
 	private LinkedList<Node> nodes = new LinkedList<>();
 	private Logger log = LogManager.getLogger("ClusterManager");
@@ -44,7 +52,6 @@ public final class ConnectionManager {
 	// Finish setting up defaults
 	// Finish LocalServer clientHandler
 	// Create service scan *
-	// TODO Add detailed description of ConnectionManager
 	/**
 	 * Configure ConnectionManager, INIT LocalServer, run serviceScan
 	 */
@@ -377,27 +384,36 @@ public final class ConnectionManager {
 					log.debug("Passive connection received");
 					connections++;
 					out.println("RECEIVEDAT");
-
-					log.debug("Realizing Quantized class...");
-					// Load class from bytes
-					// Save 'c' for a bit so GC doesn't remove the class from mem
-					// DONE Add reception for dependency classes (Untested)
-					int numDeps = Integer.parseInt(sc.nextLine());
-					log.debug("Receiving Dependencies...");
-					Class<?>[] classDeps = new Class<?>[numDeps];
-					log.debug("Says there are " + numDeps + " dependencies"); // DONE sendProcess and reception not
-																				// lining up
-					for (int i = 0; i < numDeps; i++) {
-						classDeps[i] = receiveClass(out, sc);
+					Long chkSum = sc.nextLong();
+					sc.nextLine();
+					if (loadersByUUID.containsKey(chkSum)) {
+						out.println("EXISTS");
+						loader = loadersByUUID.get(chkSum);
+					} else {
+						loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
+						loadersByUUID.put(chkSum, loader);
+						log.debug("Realizing Quantized class...");
+						// Load class from bytes
+						// Save 'c' for a bit so GC doesn't remove the class from mem
+						// DONE Add reception for dependency classes (Untested)
+						int numDeps = Integer.parseInt(sc.nextLine());
+						log.debug("Receiving Dependencies...");
+						Class<?>[] classDeps = new Class<?>[numDeps];
+						log.debug("Says there are " + numDeps + " dependencies"); // DONE sendProcess and reception not
+																					// lining up
+						for (int i = 0; i < numDeps; i++) {
+							classDeps[i] = receiveClass(out, sc);
+						}
+						final Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
+						try {
+							JProcess p = (JProcess) c.newInstance(); // DONE Class not being realized properly, need
+																		// deps
+						} catch (Exception e) {
+							e.printStackTrace();
+							out.println("FAIL:" + e.getMessage());
+						}
+						log.debug("Realized " + c.getName());
 					}
-					final Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
-					try {
-						JProcess p = (JProcess) c.newInstance(); // DONE Class not being realized properly, need deps
-					} catch (Exception e) {
-						e.printStackTrace();
-						out.println("FAIL:" + e.getMessage());
-					}
-					log.debug("Realized " + c.getName());
 					// Receive size of serialized process
 					int size = sc.nextInt();
 					// Receive process priority of process
@@ -415,8 +431,6 @@ public final class ConnectionManager {
 					try {
 						objIn = new JProcessRealizer(new ByteArrayInputStream(ser));
 						objIn.setClassLoader(loader);
-
-						// TODO Try to instantiate objIn as JSHClassLoader
 					} catch (IllegalArgumentException | SecurityException e) {
 						e.printStackTrace();
 						objIn = new JProcessRealizer(new ByteArrayInputStream(ser));
@@ -424,12 +438,7 @@ public final class ConnectionManager {
 					JProcess processObj;
 					log.debug("Converting to Object");
 					try {
-						processObj = (JProcess) objIn.readObject(); // FIXME Not finding class that has been already
-																	// loaded
-						// successfully,
-						// maybe out of scope? How do I set the scope of objIn to be
-						// the same as the URLClassLoader loading the class into
-						// modules:///??
+						processObj = (JProcess) objIn.readObject();
 					} catch (ClassNotFoundException e) {
 						// If de-serialization fails, throw error to client, cleanup
 						e.printStackTrace();
@@ -448,7 +457,7 @@ public final class ConnectionManager {
 					try {
 						process = (JProcess) processObj;
 						// Set process to use I/O from Socket
-						process.reInitialize(classDeps);
+						process.reInitialize();
 						process.setOutputStream(out);
 						process.redirectIn(s.getInputStream());
 					} catch (ClassCastException e) {
@@ -498,7 +507,6 @@ public final class ConnectionManager {
 							if (ret == terra.shell.utils.system.ReturnType.VOID) {
 								log.debug("VOID");
 								// Disconnect IO streams to save bandwidth
-								// TODO
 								try {
 									// Cleanup
 									out.flush();
@@ -536,7 +544,6 @@ public final class ConnectionManager {
 									e.printStackTrace();
 								}
 							} else if (ret == terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
-								// TODO Schedule a return
 								log.debug("ASYNC");
 								ReturnValue rv = procMon.getReturn();
 								try {
@@ -572,9 +579,6 @@ public final class ConnectionManager {
 
 				}
 				if (in.equals("RET")) {
-					// TODO Handle ReturnValue reception
-					// Scanner sc
-					// PrintStream out
 					out.println("RECEIVEDAT");
 					try {
 						receiveClass(out, sc);
@@ -597,9 +601,9 @@ public final class ConnectionManager {
 						// Receive and parse new ReturnValue
 						ReturnValue rv = (ReturnValue) objIn.readObject();
 						// Process the ReturnValue through the selected process
-						log.debug("Attempting to find Process of ID: "+rv.getProcessID().toString() + " : " + rv.getSUID().toString());
+						log.debug("Attempting to find Process of ID: " + rv.getProcessID().toString() + " : "
+								+ rv.getSUID().toString());
 						JSHProcesses.getProcess(rv.getSUID()).processReturn(rv);
-						// TODO Determine where to place returnvalue
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -631,8 +635,6 @@ public final class ConnectionManager {
 
 			sendClass(rv.getClass(), out, sc);
 
-			// TODO Serialize ReturnValue instead of resending class, class must already
-			// exist on origin anyways
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			ObjectOutputStream ins = new ObjectOutputStream(bout);
 			ins.writeObject(rv);
@@ -643,7 +645,6 @@ public final class ConnectionManager {
 				out.println((int) dat[i]);
 			}
 			out.println("DONE");
-			// TODO Send return
 			return true;
 		}
 
@@ -663,6 +664,7 @@ public final class ConnectionManager {
 			// Send type of process to server
 			pOut.println("PASSIVE");
 			log.debug("Sent PASSIVE");
+
 			// If Server doesn't respond correctly, close and cleanup
 			final String nextLine = sc.nextLine();
 			if (!nextLine.equals("RECEIVEDAT")) {
@@ -681,13 +683,21 @@ public final class ConnectionManager {
 			log.debug("Quantizing Process...");
 			String classPath = p.getClass().getName().replace('.', '/') + ".class";
 			// Get classes actual bytes in order to reinitialize correctly on host
-			InputStream cin = p.getClass().getClassLoader().getResourceAsStream(classPath);
+			CheckedInputStream cin = new CheckedInputStream(
+					p.getClass().getClassLoader().getResourceAsStream(classPath), new CRC32());
 			LinkedList<Byte> cBytes = new LinkedList<Byte>();
 			int b;
 			while ((b = cin.read()) != -1) {
 				cBytes.add((byte) b);
 			}
 			log.debug("Quantization Complete");
+			boolean remoteExists = false;
+			CRC32 chkSum = (CRC32) cin.getChecksum();
+			log.debug("Sending Checksum...");
+			pOut.println(chkSum.getValue());
+			if (sc.nextLine().equals("EXISTS")) {
+				remoteExists = true;
+			}
 			// Serialize process
 			log.debug("Serializing Process: " + p.getClass().toString());
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
@@ -697,34 +707,32 @@ public final class ConnectionManager {
 			objOut.close();
 			objOut = null;
 			log.debug("Serialization complete!");
-			log.debug("Running dependency check..."); // DONE Annotations not returning correct value??
-			// CODEAT Check for dependencies
-			if (p.getClass().isAnnotationPresent(JProcess.Depends.class)) {
-				Class<?>[] deps = p.getClass().getAnnotation(JProcess.Depends.class).dependencies();
-				pOut.println(deps.length);
-				for (Class<?> d : deps)
-					if (!sendClass(d, pOut, sc)) {
-						log.err("FAILED TO SEND DEPENDENCY CLASS: " + d.getName());
-					}
-			} else
-				pOut.println(0);
+			if (!remoteExists) {
+				log.debug("Running dependency check..."); // DONE Annotations not returning correct value??
+				// CODEAT Check for dependencies
+				if (p.getClass().isAnnotationPresent(JProcess.Depends.class)) {
+					Class<?>[] deps = p.getClass().getAnnotation(JProcess.Depends.class).dependencies();
+					pOut.println(deps.length);
+					for (Class<?> d : deps)
+						if (!sendClass(d, pOut, sc)) {
+							log.err("FAILED TO SEND DEPENDENCY CLASS: " + d.getName());
+						}
+				} else
+					pOut.println(0);
+				log.debug("Finished Dependency Check");
 
-			// TODO Check if annotations are sent to node as well, need to check for
-			// returntype at non-source node
+				log.debug("Sending size of quantized data: " + cBytes.size());
+				pOut.println(cBytes.size());
+				log.debug("Sending class name: " + p.getName());
+				pOut.println(p.getClass().getName());
 
-			log.debug("Finished Dependency Check");
+				log.debug("Sending package name: " + p.getClass().getPackage().getName());
+				pOut.println(p.getClass().getPackage().getName());
 
-			log.debug("Sending size of quantized data: " + cBytes.size());
-			pOut.println(cBytes.size());
-			log.debug("Sending class name: " + p.getName());
-			pOut.println(p.getClass().getName());
-
-			log.debug("Sending package name: " + p.getClass().getPackage().getName());
-			pOut.println(p.getClass().getPackage().getName());
-
-			log.debug("Sending quantized data...");
-			for (Byte by : cBytes) {
-				pOut.println((int) by);
+				log.debug("Sending quantized data...");
+				for (Byte by : cBytes) {
+					pOut.println((int) by);
+				}
 			}
 
 			// Turn serialized process into byte[]
@@ -825,10 +833,6 @@ public final class ConnectionManager {
 			}
 			log.debug("Sending class by name of: " + c.getCanonicalName() + " : " + packageName);
 			InputStream cin;
-			// TODO Fix issue with sending dynamically loaded classes, possibly need to keep
-			// a copy of the classes bytecode in memory until completely finished.
-			// MAJOR con of this is memory use will literally double, so possibly consider
-			// better way?
 			cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/') + ".class");
 			if (cin == null) {
 				log.err("Failed to find resource: " + c.getCanonicalName());
