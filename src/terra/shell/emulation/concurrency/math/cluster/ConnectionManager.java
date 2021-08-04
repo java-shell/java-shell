@@ -39,7 +39,7 @@ public final class ConnectionManager {
 	// by removing the classloader (Possibly serialVersionUID??
 	// TODO Need to reserve UUID slot when passive load call is received, should set
 	// UUID upon request, not instantiation
-	private Hashtable<Long, JSHClassLoader> loadersByUUID;
+	private Hashtable<Long, JSHClassLoader> loadersByUUID = new Hashtable<Long, JSHClassLoader>();
 
 	private LinkedList<Node> nodes = new LinkedList<>();
 	private Logger log = LogManager.getLogger("ClusterManager");
