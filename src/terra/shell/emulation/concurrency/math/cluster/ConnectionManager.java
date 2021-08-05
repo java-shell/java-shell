@@ -384,12 +384,15 @@ public final class ConnectionManager {
 					log.debug("Passive connection received");
 					connections++;
 					out.println("RECEIVEDAT");
+					log.debug("Receiving CheckSum...");
 					Long chkSum = sc.nextLong();
+					log.debug("GOT: " + chkSum);
 					sc.nextLine();
 					if (loadersByUUID.containsKey(chkSum)) {
 						out.println("EXISTS");
 						loader = loadersByUUID.get(chkSum);
 					} else {
+						out.println("NONEXIST");
 						loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
 						loadersByUUID.put(chkSum, loader);
 						log.debug("Realizing Quantized class...");
