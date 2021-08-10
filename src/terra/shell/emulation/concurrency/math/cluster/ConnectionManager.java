@@ -282,6 +282,12 @@ public final class ConnectionManager {
 		return true;
 	}
 
+	public JProcess[] activeProcesses() {
+		JProcess[] procs = new JProcess[ls.processes.size()];
+		procs = ls.processes.toArray(procs);
+		return procs;
+	}
+
 	/**
 	 * Local Cluster Node server implementation
 	 * 
