@@ -133,6 +133,17 @@ public final class ConnectionManager {
 		return true;
 	}
 
+	public boolean sendToAll(JProcess p, OutputStream out, InputStream in) {
+		for (Node n : nodes) {
+			try {
+				ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return true;
+	}
+
 	/**
 	 * Ping Node at "ip"
 	 * 

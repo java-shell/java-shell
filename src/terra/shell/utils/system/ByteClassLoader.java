@@ -82,9 +82,14 @@ public class ByteClassLoader extends URLClassLoader {
 			loaded.put(tmp.getName().replace('.', '/') + ".class", new ClassData(b, generateCRC(b), tmp));
 			return tmp;
 		} catch (LinkageError e) {
-			LogManager.write("GOT LINKAGEERROR: " + e.getLocalizedMessage());
-			LogManager.write("ATTEMPTING TO LOAD PRE-LOADED VERSION");
-			Class<?> preLoad = loaded.get(name).getClassObject();
+			LogManager.write("GOT LINKAGEERROR: " + e.getLocalizedMessage() + "\n");
+			LogManager.write("ATTEMPTING TO LOAD PRE-LOADED VERSION\n");
+			Class<?> preLoad = null;
+			try {
+				preLoad = loadClass(name);
+			} catch (Exception e1) {
+				throw (e);
+			}
 			if (preLoad == null) {
 				throw (e);
 			}
