@@ -33,8 +33,10 @@ import terra.shell.command.builtin.Kill;
 import terra.shell.command.builtin.LSCMD;
 import terra.shell.command.builtin.ModuleList;
 import terra.shell.command.builtin.Out;
+import terra.shell.command.builtin.PWD;
 import terra.shell.command.builtin.Print;
 import terra.shell.command.builtin.ReloadCommands;
+import terra.shell.command.builtin.RunLocal;
 import terra.shell.command.builtin.RunTX;
 import terra.shell.command.builtin.UnloadModule;
 import terra.shell.config.Configuration;
@@ -308,6 +310,12 @@ public class Launch {
 		ClusterManagement cm = new ClusterManagement();
 		cmds.put(cm.getName(), cm);
 		log.log("Loaded embedded command: " + cm.getName());
+		RunLocal run = new RunLocal();
+		cmds.put(run.getName(), run);
+		log.log("Loaded embedded command: " + run.getName());
+		PWD pwd = new PWD();
+		cmds.put(pwd.getName(), pwd);
+		log.log("Loaded embedded command: " + pwd.getName());
 	}
 
 	// Halt JSH
