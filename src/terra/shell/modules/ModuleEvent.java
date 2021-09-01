@@ -12,7 +12,7 @@ import terra.shell.utils.system.EventManager;
  * @author dan
  * 
  */
-public final class ModuleEvent {
+public class ModuleEvent {
 	private Object[] args;
 	private String type;
 

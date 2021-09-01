@@ -106,13 +106,13 @@ public class ByteClassLoader extends URLClassLoader {
 		return super.getResourceAsStream(name);
 	}
 
-	protected CRC32 generateCRC(byte[] b) {
+	protected final CRC32 generateCRC(byte[] b) {
 		CRC32 chk = new CRC32();
 		chk.update(b, 0, b.length);
 		return chk;
 	}
 
-	protected class ClassData {
+	protected final class ClassData {
 		private byte[] b;
 		private CRC32 chk;
 		private Class<?> c;
