@@ -541,18 +541,6 @@ public final class ConnectionManager {
 							if (ret == terra.shell.utils.system.ReturnType.SYNCHRONOUS) {
 								log.debug("SYNCHRONOUS");
 								// TODO Return
-								if (procMon.getReturn() == null) {
-									// TODO Deal with no return
-								} else {
-									Object[] returnValue = procMon.getReturn().getReturnValue();
-									ReturnObjectWrapper[] retObj = new ReturnObjectWrapper[returnValue.length];
-									out.println("ret:" + returnValue.length);
-									log.debug("Wrapping " + returnValue.length + " returns");
-									for (int i = 0; i < retObj.length; i++) {
-										retObj[i] = new ReturnObjectWrapper(returnValue[i]);
-									}
-									log.debug("Wrapped returns...");
-								}
 								try {
 									// Cleanup
 									out.flush();
