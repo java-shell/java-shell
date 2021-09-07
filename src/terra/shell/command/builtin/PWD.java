@@ -52,7 +52,7 @@ public class PWD extends BasicCommand {
 	@Override
 	public boolean start() {
 		getLogger().log(term.currentDir().getAbsolutePath());
-		return false;
+		return true;
 	}
 
 }
