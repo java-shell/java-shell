@@ -299,6 +299,10 @@ public final class ConnectionManager {
 		return procs;
 	}
 
+	public int numberOfNodes() {
+		return nodes.size();
+	}
+
 	/**
 	 * Local Cluster Node server implementation
 	 * 
