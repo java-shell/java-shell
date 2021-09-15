@@ -227,7 +227,7 @@ public final class ConnectionManager {
 				// Adjust IP to scan next device on network
 				rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
 				// Attempt a connection to a possible Node
-				s.connect(rolling, 10);
+				s.connect(rolling, 200);
 				// If connection completes, get Socket IO
 				out = new PrintStream(s.getOutputStream());
 				sc = new Scanner(s.getInputStream());
