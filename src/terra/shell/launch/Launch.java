@@ -461,7 +461,7 @@ public class Launch {
 	private static void loadCmdsRepo(String address) throws UnknownHostException, IOException {
 		// Connect to repo
 		Socket s = new Socket();
-		s.setReceiveBufferSize(512);
+		// s.setReceiveBufferSize(512);
 		s.connect(new InetSocketAddress(address, 2101), 100);
 		Scanner sc = new Scanner(s.getInputStream());
 		PrintStream out = new PrintStream(s.getOutputStream());
@@ -477,6 +477,9 @@ public class Launch {
 			if (fileInf.length < 3) {
 				log.err("Bad command header from server, failed to load command");
 				// If server says complete, break loop
+				if (fileInf[0].equals("COMPLETE")) {
+					break;
+				}
 			}
 
 			// Begin loading file
@@ -487,11 +490,15 @@ public class Launch {
 
 			log.log("File size: " + fileSize);
 
+			out.println();
+
 			// Get File from server
 			int i;
-			for (i = 0; i < fileSize; i++) {
-				file[i] = (byte) s.getInputStream().read();
+			for (i = 0; i < (fileSize); i++) {
+				file[i] = (byte) sc.nextInt();
+				// log.debug(i + "");
 			}
+			sc.nextLine();
 
 			log.log("File received, size: " + i);
 
@@ -507,6 +514,11 @@ public class Launch {
 			} catch (InstantiationException e) {
 				e.printStackTrace();
 				continue;
+			} catch (Exception e) {
+				e.printStackTrace();
+				continue;
+			} catch (NoClassDefFoundError e) {
+				e.printStackTrace();
 			}
 
 			String next = sc.nextLine();
