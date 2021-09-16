@@ -18,8 +18,9 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Scanner;
-import java.util.UUID;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 
@@ -41,7 +42,7 @@ public final class ConnectionManager {
 	// UUID upon request, not instantiation
 	private Hashtable<Long, JSHClassLoader> loadersByUUID = new Hashtable<Long, JSHClassLoader>();
 
-	private LinkedList<Node> nodes = new LinkedList<>();
+	private Queue<Node> nodes = new PriorityQueue<Node>();
 	private Logger log = LogManager.getLogger("ClusterManager");
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
@@ -126,22 +127,36 @@ public final class ConnectionManager {
 	public boolean queueProcess(JProcess p, OutputStream out, InputStream in) {
 		// TODO Add node selection
 		try {
-			ls.sendProcess(nodes.getFirst().ip, p, ProcessPriority.MEDIUM, out, in);
+			Node n = nodes.poll();
+			ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+			n.updatePing();
+			nodes.add(n);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return true;
 	}
 
+	/**
+	 * Send a JProcess to all known Nodes
+	 * 
+	 * @param p   JProcess to be sent
+	 * @param out
+	 * @param in
+	 * @return True if process is sent successfully to all nodes, otherwise false.
+	 *         Can be false if only one out 'n' Nodes fails
+	 */
 	public boolean sendToAll(JProcess p, OutputStream out, InputStream in) {
+		boolean succ = true;
 		for (Node n : nodes) {
 			try {
 				ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
 			} catch (Exception e) {
 				e.printStackTrace();
+				succ = false;
 			}
 		}
-		return true;
+		return succ;
 	}
 
 	/**
