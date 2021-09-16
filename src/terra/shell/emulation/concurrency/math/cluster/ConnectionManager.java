@@ -972,7 +972,7 @@ public final class ConnectionManager {
 		}
 
 		@SuppressWarnings("unused")
-		public long getPing() {
+		public synchronized long getPing() {
 			return ping;
 		}
 
