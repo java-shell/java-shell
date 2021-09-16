@@ -15,6 +15,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -117,7 +118,9 @@ public final class ConnectionManager {
 	}
 
 	/**
-	 * Queue a JProcess to be serialized and sent to another Node for processing
+	 * Queue a JProcess to be serialized and sent to another Node for processing.
+	 * This uses a sorting algorithm based on each Nodes ping, and delta since last
+	 * usage time, prioritizing low-ping, low-usage nodes.
 	 * 
 	 * @param p   JProcess to be sent
 	 * @param out
@@ -127,6 +130,8 @@ public final class ConnectionManager {
 	public boolean queueProcess(JProcess p, OutputStream out, InputStream in) {
 		// TODO Add node selection
 		try {
+			// Select top Node based on Node.compareTo
+			// Compares Nodes based on overall ping, as well as time since last usage
 			Node n = nodes.poll();
 			ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
 			n.updatePing();
@@ -138,7 +143,7 @@ public final class ConnectionManager {
 	}
 
 	/**
-	 * Send a JProcess to all known Nodes
+	 * Send a JProcess to all known Nodes, ignoring the sorting algorithm
 	 * 
 	 * @param p   JProcess to be sent
 	 * @param out
@@ -891,12 +896,14 @@ public final class ConnectionManager {
 		private long ping;
 		private Inet4Address ip;
 		private Socket s;
+		private long lastUsed;
 
 		@SuppressWarnings("unused")
 		public Node(Inet4Address ip) throws UnknownHostException, IOException {
 			this.ip = ip;
 			s = new Socket(ip.getHostAddress(), port);
 			updatePing();
+			lastUsed = System.currentTimeMillis();
 		}
 
 		public Node(Inet4Address ip, boolean doPing) throws UnknownHostException, IOException {
@@ -904,18 +911,21 @@ public final class ConnectionManager {
 			s = new Socket(ip.getHostAddress(), port);
 			if (doPing)
 				updatePing();
+			lastUsed = System.currentTimeMillis();
 		}
 
 		public Node(Inet4Address ip, long ping) throws UnknownHostException, IOException {
 			this.ip = ip;
 			s = new Socket(ip.getHostAddress(), port);
 			this.ping = ping;
+			lastUsed = System.currentTimeMillis();
 		}
 
 		@SuppressWarnings("unused")
 		public Node(Socket s) throws IOException {
 			this.s = s;
 			updatePing();
+			lastUsed = System.currentTimeMillis();
 		}
 
 		@SuppressWarnings("unused")
@@ -923,6 +933,7 @@ public final class ConnectionManager {
 			this.ping = ping;
 			this.ip = ip;
 			s = new Socket(ip.getHostAddress(), port);
+			lastUsed = System.currentTimeMillis();
 		}
 
 		public long updatePing() throws IOException {
@@ -932,10 +943,31 @@ public final class ConnectionManager {
 
 		@Override
 		public int compareTo(Node n) {
-			if (ping > n.ping)
+			// Ping ratio calculated based on a max ping of 200ms
+			float pingRatio = (ping / 200);
+			if (pingRatio >= 1)
 				return -1;
-			if (ping < n.ping)
+			float nPingRatio = (n.ping / 200);
+			long timeDelta = (System.currentTimeMillis() - lastUsed);
+			long nTimeDelta = (System.currentTimeMillis() - n.lastUsed);
+
+			// If this Node has a higher ping than 'n' and has been more recently used,
+			// check to see if 'n' has a ping of no more than %10 longer, and if so accept
+			// 'n' as the priority
+			if (pingRatio > nPingRatio) {
+				if (timeDelta < nTimeDelta && !(pingRatio - nPingRatio >= 0.1f)) {
+					return -1;
+				}
 				return 1;
+			}
+			// If this Node has a lower ping than 'n' and has not been used more recently,
+			// check to see if this Node has a ping no more than %10 longer, and if so
+			// accept this Node as priority
+			if (pingRatio < nPingRatio) {
+				if (timeDelta > nTimeDelta && (pingRatio - nPingRatio <= 0.1f))
+					return 1;
+				return -1;
+			}
 			return 0;
 		}
 
