@@ -26,7 +26,7 @@ import terra.shell.utils.streams.OutputStreamMonitorBuffer;
  * 
  */
 public final class Terminal extends InteractiveObject {
-	private Logger log = LogManager.getLogger("Terminal");
+	private final String name = getName();
 	private File currentDir = new File("/");
 	private OutputStream gOut = LogManager.out;
 	private InputStream gIn = System.in;
@@ -45,8 +45,7 @@ public final class Terminal extends InteractiveObject {
 	/**
 	 * Create a new terminal specifying the direction of its output
 	 * 
-	 * @param gout
-	 *            OutputStream to point all of this terminals output.
+	 * @param gout OutputStream to point all of this terminals output.
 	 */
 	public Terminal(OutputStream gout) {
 		gOut = gout;
@@ -63,17 +62,21 @@ public final class Terminal extends InteractiveObject {
 
 	@Override
 	public String getName() {
-		return "Terminal";
+		return "Terminal" + Math.random();
 	}
 
 	@Override
 	public boolean start() {
+		getLogger().debug("Attempting to spawn a Terminal");
 		getLogger().setOutputStream(gOut);
 		getLogger().log("Starting terminal!");
 		currentDir = new File("/");
 
 		getLogger().log("Initializing input!");
-		new Login(this).run();
+		Login l = new Login(this);
+		l.setOutputStream(gOut);
+		l.redirectIn(gIn);
+		l.run();
 		sc = new Scanner(gIn);
 		String in;
 		getLogger().print(currentDir.getName() + ">");
@@ -207,10 +210,8 @@ public final class Terminal extends InteractiveObject {
 	 * Run a specific command, calling it using the returned string from
 	 * Command.getName();
 	 * 
-	 * @param cmd
-	 *            String referring to the Command
-	 * @param args
-	 *            Arguments to pass to the command
+	 * @param cmd  String referring to the Command
+	 * @param args Arguments to pass to the command
 	 * @return True if the command is run successfully, false otherwise
 	 */
 	public boolean runCmd(String cmd, String... args) {
@@ -234,8 +235,7 @@ public final class Terminal extends InteractiveObject {
 	/**
 	 * Change the directory which this terminal is looking at
 	 * 
-	 * @param dir
-	 *            A new directory
+	 * @param dir A new directory
 	 */
 	public void setCurrentDir(File dir) {
 		currentDir = dir;
@@ -253,21 +253,20 @@ public final class Terminal extends InteractiveObject {
 	/**
 	 * Set the current stream that this terminal's output is pointing to
 	 * 
-	 * @param out
-	 *            An OutputStream
+	 * @param out An OutputStream
 	 */
 	public void setGOutputStream(OutputStream out) {
 		gOut = out;
-		getLogger().setOutputStream(out);
+		setOutputStream(out);
 	}
 
 	/**
 	 * Set the terminal's InputStream
 	 * 
-	 * @param in
-	 *            An InputStream
+	 * @param in An InputStream
 	 */
 	public void setGInputStream(InputStream in) {
+		redirectIn(in);
 		gIn = in;
 		always = false;
 		sc = new Scanner(in);

@@ -43,9 +43,11 @@ import terra.shell.config.Configuration;
 import terra.shell.emulation.concurrency.math.cluster.ConnectionManager;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
+import terra.shell.modules.ModuleEvent;
 import terra.shell.modules.ModuleManagement;
 import terra.shell.utils.keys.DummyListener;
 import terra.shell.utils.keys.DummyType;
+import terra.shell.utils.keys.Event;
 import terra.shell.utils.keys.EventInterpreter;
 import terra.shell.utils.keys.EventType;
 import terra.shell.utils.keys._Listener;
@@ -201,6 +203,7 @@ public class Launch {
 
 		// CODEAT Set variables
 		Variables.setVar(new GeneralVariable("log.filter", "true"));
+		EventManager.invokeEvent(new InitEvent(InitStage.LOAD_MODULES));
 		ModuleManagement mm = new ModuleManagement();
 		mm.start();
 		try {
@@ -215,6 +218,8 @@ public class Launch {
 		EventManager.registerListener(new DummyListener(), "Dummy");
 		EventInterpreter.addType(new DummyType());
 		EventManager.registerEvType("module-access");
+
+		EventManager.invokeEvent(new InitEvent(InitStage.CLUSTER_INIT));
 
 		// CODEAT Launch Cluster Management server
 		log.log("Starting Cluster Management");
@@ -244,7 +249,9 @@ public class Launch {
 				}
 			}
 			// Init Terminal
+			EventManager.invokeEvent(new InitEvent(InitStage.INIT_COMPLETION));
 			Terminal t = new Terminal();
+			log.log(t.getGOutputStream().toString());
 			t.run();
 		}
 		// Keep Main thread alive
@@ -488,7 +495,7 @@ public class Launch {
 
 			ArrayList<Byte> fileS = new ArrayList<Byte>();
 
-			log.log("File size: " + fileSize);
+			// log.log("File size: " + fileSize);
 
 			out.println();
 
@@ -500,7 +507,7 @@ public class Launch {
 			}
 			sc.nextLine();
 
-			log.log("File received, size: " + i);
+			// log.log("File received, size: " + i);
 
 			// Instantiate command, add to Command list
 			try {
@@ -583,5 +590,28 @@ public class Launch {
 		} else {
 			log.log("Failed to register device with interpreter! NULL!");
 		}
+	}
+
+	public final class InitEvent implements Event {
+		private final InitStage stage;
+
+		@EventPriority(id = INIT_TYPE, value = -1)
+		public InitEvent(InitStage stage) {
+			this.stage = stage;
+		}
+
+		@Override
+		public String getCreator() {
+			return "INIT";
+		}
+
+		public InitStage getStage() {
+			return stage;
+		}
+
+	}
+
+	public static enum InitStage {
+		EARLY_INIT, LOAD_CONFIG, LOAD_COMMANDS, LOAD_MODULES, CLUSTER_INIT, INIT_COMPLETION
 	}
 }

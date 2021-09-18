@@ -19,7 +19,7 @@ public class LogManager {
 	private static int loggers;
 	private static Hashtable<Integer, Logger> logs = new Hashtable<Integer, Logger>();
 	private static ArrayList<String> logNames = new ArrayList<String>();
-	private static Logger log = new Logger("LogManager", loggers, false);
+	private static Logger log = new Logger("LogManager", loggers, true);
 	public final static PrintStream out = new PrintStream(
 			new BufferedOutputStream(new FileOutputStream(FileDescriptor.out)), true);
 	private static boolean writing = false;

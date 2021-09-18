@@ -20,7 +20,7 @@ public class Logger implements Serializable {
 	private transient PrintStream out = LogManager.out;
 	private transient PrintStream debug = out;
 	private transient boolean filter = true;
-	private transient boolean useOut = false;
+	private transient boolean useOut = true;
 
 	/**
 	 * Create a Logger with this numerical ID and Display Name
@@ -29,7 +29,7 @@ public class Logger implements Serializable {
 	 * @param id   Numerical ID
 	 */
 	public Logger(String name, int id, boolean useOut) {
-		this.useOut = useOut;
+		this.useOut = !useOut;
 		this.id = id;
 		this.name = name + ":" + id;
 		try {
@@ -247,6 +247,7 @@ public class Logger implements Serializable {
 	 */
 	public void setOutputStream(OutputStream out) {
 		this.out = new PrintStream(out);
+		debug = this.out;
 	}
 
 	/**
