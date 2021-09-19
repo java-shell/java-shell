@@ -84,7 +84,7 @@ public final class EventManager {
 			for (int i = 0; i < avail.size(); i++) {
 				avail.get(i).trigger(e);
 				// CODEAT Debug line
-				// log.log("Triggering: " + e.getCreator());
+				 log.log("Triggering: " + e.getCreator());
 			}
 			id = null;
 		} catch (Exception e1) {
