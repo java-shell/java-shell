@@ -9,13 +9,13 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -496,6 +496,7 @@ public final class ConnectionManager {
 					log.debug("Object converted sucecssfully");
 					objIn.close();
 					// Convert from object to process
+					final InetAddress origin = s.getInetAddress();
 					log.debug("Creating JProcess");
 					JProcess process;
 					try {
@@ -579,7 +580,7 @@ public final class ConnectionManager {
 								log.debug("ASYNC");
 								ReturnValue rv = procMon.getReturn();
 								try {
-									sendReturn(procMon.getOrigin(), rv);
+									sendReturn((Inet4Address) origin, rv);
 								} catch (Exception e) {
 									e.printStackTrace();
 									log.err("UNABLE TO SEND RETURN TO ORIGIN: " + procMon.getOrigin().toString());
