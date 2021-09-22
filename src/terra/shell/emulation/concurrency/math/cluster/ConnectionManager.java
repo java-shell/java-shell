@@ -16,6 +16,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -24,6 +28,8 @@ import java.util.Queue;
 import java.util.Scanner;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
+
+import com.sun.tools.javac.util.ArrayUtils;
 
 import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
@@ -459,9 +465,10 @@ public final class ConnectionManager {
 						log.debug("Says there are " + numDeps + " dependencies"); // DONE sendProcess and reception not
 																					// lining up
 						for (int i = 0; i < numDeps; i++) {
-							classDeps[i] = receiveClass(out, sc);
+							classDeps[i] = receiveClass(out, s.getInputStream());
 						}
-						final Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
+						final Class<?> c = receiveClass(out, s.getInputStream()); // CODEAT Receive Main class object
+																					// for JProcess
 						try {
 							JProcess p = (JProcess) c.newInstance(); // DONE Class not being realized properly, need
 																		// deps
@@ -627,14 +634,8 @@ public final class ConnectionManager {
 				if (in.equals("RET")) {
 					out.println("RECEIVEDAT");
 					try {
-						receiveClass(out, sc);
-						int datSize = Integer.parseInt(sc.nextLine());
-						log.debug("Receiving ReturnObject of size " + datSize);
-						byte[] dat = new byte[datSize];
-						for (int i = 0; i < datSize; i++) {
-							dat[i] = (byte) sc.nextInt();
-						}
-						sc.nextLine();
+						receiveClass(out, s.getInputStream());
+						byte[] dat = readBytes(s.getInputStream(), out);
 						if (!sc.nextLine().equalsIgnoreCase("DONE")) {
 							log.err("DID NOT RECEIVE \"DONE\" FROM RET SENDER");
 							dat = null;
@@ -658,6 +659,46 @@ public final class ConnectionManager {
 			sc.close();
 		}
 
+		private boolean sendBytes(byte[] bytes, OutputStream out, InputStream in) throws IOException {
+			PrintStream pOut = new PrintStream(out);
+			Scanner sc = new Scanner(in);
+			pOut.println("CHANNELTRANSFER");
+			while (!sc.hasNext())
+				;
+			if (!sc.nextLine().equals("CHANNELREADY")) {
+				throw new IOException(
+						"Socket not prepared for Channel Transfer, or got out of sync with remote resources");
+			}
+			pOut.println(bytes.length);
+			ByteArrayInputStream bin = new ByteArrayInputStream(bytes);
+			ReadableByteChannel rbc = Channels.newChannel(bin);
+			WritableByteChannel wbc = Channels.newChannel(out);
+			ByteBuffer src = ByteBuffer.allocateDirect(bytes.length);
+			rbc.read(src);
+			wbc.write(src);
+			return true;
+		}
+
+		private byte[] readBytes(InputStream in, OutputStream out) throws IOException {
+			PrintStream pOut = new PrintStream(out);
+			Scanner sc = new Scanner(in);
+			while (!sc.hasNext())
+				;
+			if (!sc.nextLine().equals("CHANNELTRANSFER")) {
+				throw new IOException(
+						"Socket not prepared for Channel Transfer, or got out of sync with remote resources");
+			}
+			int size = sc.nextInt();
+			sc.nextLine();
+			ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+			ReadableByteChannel rbc = Channels.newChannel(in);
+			WritableByteChannel wbc = Channels.newChannel(bOut);
+			ByteBuffer src = ByteBuffer.allocateDirect(size);
+			rbc.read(src);
+			wbc.write(src);
+			return bOut.toByteArray();
+		}
+
 		@SuppressWarnings("resource")
 		private boolean sendReturn(Inet4Address ip, ReturnValue rv) throws IOException {
 			log.debug("Sending return to : " + ip.toString());
@@ -679,18 +720,16 @@ public final class ConnectionManager {
 				return false;
 			}
 
-			sendClass(rv.getClass(), out, sc);
+			sendClass(rv.getClass(), out, s.getInputStream());
 
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			ObjectOutputStream ins = new ObjectOutputStream(bout);
 			ins.writeObject(rv);
 			byte[] dat = bout.toByteArray();
 			log.debug("Sending ReturnValue size of " + dat.length);
-			out.println(dat.length);
-			for (int i = 0; i < dat.length; i++) {
-				out.println((int) dat[i]);
-			}
-			out.flush();
+
+			sendBytes(dat, out, s.getInputStream());
+
 			out.println("DONE");
 			log.debug("Finished sending ReturnValue...");
 			return true;
@@ -762,7 +801,7 @@ public final class ConnectionManager {
 					Class<?>[] deps = p.getClass().getAnnotation(JProcess.Depends.class).dependencies();
 					pOut.println(deps.length);
 					for (Class<?> d : deps)
-						if (!sendClass(d, pOut, sc)) {
+						if (!sendClass(d, pOut, in)) {
 							log.err("FAILED TO SEND DEPENDENCY CLASS: " + d.getName());
 						}
 				} else
@@ -838,7 +877,8 @@ public final class ConnectionManager {
 			return false;
 		}
 
-		public Class<?> receiveClass(PrintStream out, Scanner sc) {
+		public Class<?> receiveClass(PrintStream out, InputStream in) {
+			Scanner sc = new Scanner(in);
 			log.debug("Recieving Quantized class size...");
 			// Get Class size
 			int cSize = Integer.parseInt(sc.nextLine());
@@ -859,12 +899,20 @@ public final class ConnectionManager {
 
 			loader.setPackageAssertionStatus(packageName, true);
 
-			byte[] cBytes = new byte[cSize];
-			// Receive Class
-			for (int i = 0; i < cSize; i++) {
-				cBytes[i] = (byte) sc.nextInt();
+			byte[] cBytes;
+			try {
+				cBytes = readBytes(in, out);
+			} catch (Exception e) {
+				e.printStackTrace();
+				return null;
 			}
-			sc.nextLine();
+
+			// byte[] cBytes = new byte[cSize];
+			// Receive Class
+			// for (int i = 0; i < cSize; i++) {
+			// cBytes[i] = (byte) sc.nextInt();
+			// }
+			// sc.nextLine();
 			log.debug("Realizing Quantized class...");
 			// Load class from bytes
 			// Save 'c' for a bit so GC doesn't remove the class from mem
@@ -875,7 +923,8 @@ public final class ConnectionManager {
 			return c;
 		}
 
-		public boolean sendClass(Class<?> c, PrintStream out, Scanner sc) throws IOException {
+		public boolean sendClass(Class<?> c, PrintStream out, InputStream in) throws IOException {
+			Scanner sc = new Scanner(in);
 			String classPath = c.getName().replace('/', '.');
 			String packageName = "";
 			if (c.getPackage() != null) {
@@ -887,13 +936,14 @@ public final class ConnectionManager {
 			if (cin == null) {
 				log.err("Failed to find resource: " + c.getCanonicalName());
 			}
-			LinkedList<Byte> dat = new LinkedList<Byte>();
+			ByteArrayOutputStream bOut = new ByteArrayOutputStream();
 			int b;
 			while ((b = cin.read()) != -1) {
-				dat.add((byte) b);
+				bOut.write(b);
 			}
-			log.debug("Sending size of data " + dat.size());
-			out.println(dat.size());
+			byte[] dat = bOut.toByteArray();
+			log.debug("Sending size of data " + dat.length);
+			out.println(dat.length);
 
 			log.debug("Sending class name " + classPath);
 			out.println(classPath);
@@ -901,10 +951,8 @@ public final class ConnectionManager {
 			log.debug("Sending package name " + packageName);
 			out.println(packageName);
 
+			sendBytes(dat, out, in);
 			// Send serialized process to server
-			for (int i = 0; i < dat.size(); i++) {
-				out.println((int) dat.get(i));
-			}
 			out.flush();
 			log.debug("Process sent");
 			return true;
