@@ -9,7 +9,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Scanner;
 
-import javax.xml.bind.DatatypeConverter;
+//import javax.xml.bind.DatatypeConverter;
 
 import terra.shell.command.Command;
 import terra.shell.utils.perms.Permissions;
@@ -163,28 +163,28 @@ public class Compile extends Command {
 						// Encode MD5
 						byte[] md5 = md.digest();
 
-						String mdHash = DatatypeConverter.printHexBinary(md5).toUpperCase();
+						// String mdHash = DatatypeConverter.printHexBinary(md5).toUpperCase();
 
-						byte[] md5Encode = Encoder.parseString(mdHash);
+						// byte[] md5Encode = Encoder.parseString(mdHash);
 
-						byte[] md5Length = Encoder.parseString("" + md5Encode.length);
+						// byte[] md5Length = Encoder.parseString("" + md5Encode.length);
 
 						// Add MD5 length header
 						// TODO Add Identifying byte to signal start and end of length statement
 
-						file.add(0, (byte) 53);
-						for (int i = 0; i < md5Length.length; i++) {
-							file.add(1, md5Length[i]);
-						}
+						// file.add(0, (byte) 53);
+						// for (int i = 0; i < md5Length.length; i++) {
+						// file.add(1, md5Length[i]);
+						// }
 						// TODO End length header
 						// Add MD5 hash to beginning of file
 
-						file.add(md5Length.length + 1, (byte) 48);
+						// file.add(md5Length.length + 1, (byte) 48);
 
 						// Fix add statement to adjust for index shift
-						for (int i = 0; i < md5Encode.length; i++) {
-							file.add(md5Length.length + 2, md5Encode[i]);
-						}
+						// for (int i = 0; i < md5Encode.length; i++) {
+						// file.add(md5Length.length + 2, md5Encode[i]);
+						// }
 
 						getLogger().log("Writing File...");
 						BufferedOutputStream bout = new BufferedOutputStream(

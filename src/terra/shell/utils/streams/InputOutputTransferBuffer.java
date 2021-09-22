@@ -21,6 +21,7 @@ public class InputOutputTransferBuffer {
 					while ((b = in.read()) != -1) {
 						out.write(b);
 					}
+					out.flush();
 				} catch (Exception e) {
 					e.printStackTrace();
 					return;

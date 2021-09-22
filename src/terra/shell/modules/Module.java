@@ -5,8 +5,8 @@ import java.util.UUID;
 
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
-import terra.shell.modules.ModuleEvent.DummyEvent;
 import terra.shell.utils.JProcess;
+import terra.shell.utils.keys.Event;
 import terra.shell.utils.system.EventManager;
 
 /**
@@ -72,10 +72,9 @@ public abstract class Module implements Serializable {
 	 * is passed pointing to this module. The ModuleEvent which invoked MAListener
 	 * is then passed to the module.
 	 * 
-	 * @param event
-	 *            The ModuleEvent which invoked MAListener.
+	 * @param event The ModuleEvent which invoked MAListener.
 	 */
-	public abstract void trigger(DummyEvent event);
+	public abstract void trigger(Event event);
 
 	/**
 	 * Lets think real hard about this one for a second...

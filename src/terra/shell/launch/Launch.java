@@ -33,17 +33,21 @@ import terra.shell.command.builtin.Kill;
 import terra.shell.command.builtin.LSCMD;
 import terra.shell.command.builtin.ModuleList;
 import terra.shell.command.builtin.Out;
+import terra.shell.command.builtin.PWD;
 import terra.shell.command.builtin.Print;
 import terra.shell.command.builtin.ReloadCommands;
+import terra.shell.command.builtin.RunLocal;
 import terra.shell.command.builtin.RunTX;
 import terra.shell.command.builtin.UnloadModule;
 import terra.shell.config.Configuration;
 import terra.shell.emulation.concurrency.math.cluster.ConnectionManager;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
+import terra.shell.modules.ModuleEvent;
 import terra.shell.modules.ModuleManagement;
 import terra.shell.utils.keys.DummyListener;
 import terra.shell.utils.keys.DummyType;
+import terra.shell.utils.keys.Event;
 import terra.shell.utils.keys.EventInterpreter;
 import terra.shell.utils.keys.EventType;
 import terra.shell.utils.keys._Listener;
@@ -199,6 +203,7 @@ public class Launch {
 
 		// CODEAT Set variables
 		Variables.setVar(new GeneralVariable("log.filter", "true"));
+		EventManager.invokeEvent(new InitEvent(InitStage.LOAD_MODULES));
 		ModuleManagement mm = new ModuleManagement();
 		mm.start();
 		try {
@@ -213,6 +218,8 @@ public class Launch {
 		EventManager.registerListener(new DummyListener(), "Dummy");
 		EventInterpreter.addType(new DummyType());
 		EventManager.registerEvType("module-access");
+
+		EventManager.invokeEvent(new InitEvent(InitStage.CLUSTER_INIT));
 
 		// CODEAT Launch Cluster Management server
 		log.log("Starting Cluster Management");
@@ -242,7 +249,9 @@ public class Launch {
 				}
 			}
 			// Init Terminal
+			EventManager.invokeEvent(new InitEvent(InitStage.INIT_COMPLETION));
 			Terminal t = new Terminal();
+			log.log(t.getGOutputStream().toString());
 			t.run();
 		}
 		// Keep Main thread alive
@@ -308,6 +317,12 @@ public class Launch {
 		ClusterManagement cm = new ClusterManagement();
 		cmds.put(cm.getName(), cm);
 		log.log("Loaded embedded command: " + cm.getName());
+		RunLocal run = new RunLocal();
+		cmds.put(run.getName(), run);
+		log.log("Loaded embedded command: " + run.getName());
+		PWD pwd = new PWD();
+		cmds.put(pwd.getName(), pwd);
+		log.log("Loaded embedded command: " + pwd.getName());
 	}
 
 	// Halt JSH
@@ -453,7 +468,7 @@ public class Launch {
 	private static void loadCmdsRepo(String address) throws UnknownHostException, IOException {
 		// Connect to repo
 		Socket s = new Socket();
-		s.setReceiveBufferSize(512);
+		// s.setReceiveBufferSize(512);
 		s.connect(new InetSocketAddress(address, 2101), 100);
 		Scanner sc = new Scanner(s.getInputStream());
 		PrintStream out = new PrintStream(s.getOutputStream());
@@ -469,6 +484,9 @@ public class Launch {
 			if (fileInf.length < 3) {
 				log.err("Bad command header from server, failed to load command");
 				// If server says complete, break loop
+				if (fileInf[0].equals("COMPLETE")) {
+					break;
+				}
 			}
 
 			// Begin loading file
@@ -477,15 +495,19 @@ public class Launch {
 
 			ArrayList<Byte> fileS = new ArrayList<Byte>();
 
-			log.log("File size: " + fileSize);
+			// log.log("File size: " + fileSize);
+
+			out.println();
 
 			// Get File from server
 			int i;
-			for (i = 0; i < fileSize; i++) {
-				file[i] = (byte) s.getInputStream().read();
+			for (i = 0; i < (fileSize); i++) {
+				file[i] = (byte) sc.nextInt();
+				// log.debug(i + "");
 			}
+			sc.nextLine();
 
-			log.log("File received, size: " + i);
+			// log.log("File received, size: " + i);
 
 			// Instantiate command, add to Command list
 			try {
@@ -499,6 +521,11 @@ public class Launch {
 			} catch (InstantiationException e) {
 				e.printStackTrace();
 				continue;
+			} catch (Exception e) {
+				e.printStackTrace();
+				continue;
+			} catch (NoClassDefFoundError e) {
+				e.printStackTrace();
 			}
 
 			String next = sc.nextLine();
@@ -563,5 +590,28 @@ public class Launch {
 		} else {
 			log.log("Failed to register device with interpreter! NULL!");
 		}
+	}
+
+	public final class InitEvent implements Event {
+		private final InitStage stage;
+
+		@EventPriority(id = INIT_TYPE, value = -1)
+		public InitEvent(InitStage stage) {
+			this.stage = stage;
+		}
+
+		@Override
+		public String getCreator() {
+			return "INIT";
+		}
+
+		public InitStage getStage() {
+			return stage;
+		}
+
+	}
+
+	public static enum InitStage {
+		EARLY_INIT, LOAD_CONFIG, LOAD_COMMANDS, LOAD_MODULES, CLUSTER_INIT, INIT_COMPLETION
 	}
 }

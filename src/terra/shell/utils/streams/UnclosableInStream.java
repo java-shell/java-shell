@@ -18,27 +18,37 @@ public class UnclosableInStream extends InputStream {
 
 	@Override
 	public int read() throws IOException {
-		return inputStream.read();
+		synchronized (this) {
+			return inputStream.read();
+		}
 	}
 
 	@Override
 	public int read(byte[] b) throws IOException {
-		return inputStream.read(b);
+		synchronized (this) {
+			return inputStream.read(b);
+		}
 	}
 
 	@Override
 	public int read(byte[] b, int off, int len) throws IOException {
-		return inputStream.read(b, off, len);
+		synchronized (this) {
+			return inputStream.read(b, off, len);
+		}
 	}
 
 	@Override
 	public long skip(long n) throws IOException {
-		return inputStream.skip(n);
+		synchronized (this) {
+			return inputStream.skip(n);
+		}
 	}
 
 	@Override
 	public int available() throws IOException {
-		return inputStream.available();
+		synchronized (this) {
+			return inputStream.available();
+		}
 	}
 
 	@Override

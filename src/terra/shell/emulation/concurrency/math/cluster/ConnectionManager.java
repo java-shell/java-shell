@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
@@ -16,9 +17,13 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Scanner;
+import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 
 import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
@@ -32,8 +37,13 @@ import terra.shell.utils.system.JSHProcesses;
 public final class ConnectionManager {
 
 	private JSHClassLoader loader;
+	// TODO Categorize Classloaders by UUID in order to allow deloading of classes
+	// by removing the classloader (Possibly serialVersionUID??
+	// TODO Need to reserve UUID slot when passive load call is received, should set
+	// UUID upon request, not instantiation
+	private Hashtable<Long, JSHClassLoader> loadersByUUID = new Hashtable<Long, JSHClassLoader>();
 
-	private LinkedList<Node> nodes = new LinkedList<>();
+	private Queue<Node> nodes = new PriorityQueue<Node>();
 	private Logger log = LogManager.getLogger("ClusterManager");
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
@@ -44,11 +54,11 @@ public final class ConnectionManager {
 	// Finish setting up defaults
 	// Finish LocalServer clientHandler
 	// Create service scan *
-	// TODO Add detailed description of ConnectionManager
 	/**
 	 * Configure ConnectionManager, INIT LocalServer, run serviceScan
 	 */
 	public ConnectionManager() {
+		log.useOut(false);
 		log.log("Starting Connection Manager...");
 		// Try to open conf file
 		Configuration conf = Launch.getConfig("ClusterService");
@@ -109,7 +119,9 @@ public final class ConnectionManager {
 	}
 
 	/**
-	 * Queue a JProcess to be serialized and sent to another Node for processing
+	 * Queue a JProcess to be serialized and sent to another Node for processing.
+	 * This uses a sorting algorithm based on each Nodes ping, and delta since last
+	 * usage time, prioritizing low-ping, low-usage nodes.
 	 * 
 	 * @param p   JProcess to be sent
 	 * @param out
@@ -119,9 +131,48 @@ public final class ConnectionManager {
 	public boolean queueProcess(JProcess p, OutputStream out, InputStream in) {
 		// TODO Add node selection
 		try {
-			ls.sendProcess(nodes.getFirst().ip, p, ProcessPriority.MEDIUM, out, in);
+			// Select top Node based on Node.compareTo
+			// Compares Nodes based on overall ping, as well as time since last usage
+			Node n = nodes.poll();
+			ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+			n.updatePing();
+			nodes.add(n);
 		} catch (Exception e) {
 			e.printStackTrace();
+		}
+		return true;
+	}
+
+	/**
+	 * Send a JProcess to all known Nodes, ignoring the sorting algorithm
+	 * 
+	 * @param p   JProcess to be sent
+	 * @param out
+	 * @param in
+	 * @return True if process is sent successfully to all nodes, otherwise false.
+	 *         Can be false if only one out 'n' Nodes fails
+	 */
+	public boolean sendToAll(final JProcess p, final OutputStream out, final InputStream in) {
+		for (final Node n : nodes) {
+			JProcess pr = new JProcess() {
+
+				@Override
+				public String getName() {
+					return "SendProc";
+				}
+
+				@Override
+				public boolean start() {
+					try {
+						ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+					} catch (Exception e) {
+						e.printStackTrace();
+						return false;
+					}
+					return true;
+				}
+			};
+			pr.run();
 		}
 		return true;
 	}
@@ -209,7 +260,7 @@ public final class ConnectionManager {
 				// Adjust IP to scan next device on network
 				rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
 				// Attempt a connection to a possible Node
-				s.connect(rolling, 10);
+				s.connect(rolling, 200);
 				// If connection completes, get Socket IO
 				out = new PrintStream(s.getOutputStream());
 				sc = new Scanner(s.getInputStream());
@@ -273,6 +324,16 @@ public final class ConnectionManager {
 		String s = sc.nextLine();
 		log.debug("Handshake complete: " + s);
 		return true;
+	}
+
+	public JProcess[] activeProcesses() {
+		JProcess[] procs = new JProcess[ls.processes.size()];
+		procs = ls.processes.toArray(procs);
+		return procs;
+	}
+
+	public int numberOfNodes() {
+		return nodes.size();
 	}
 
 	/**
@@ -377,27 +438,39 @@ public final class ConnectionManager {
 					log.debug("Passive connection received");
 					connections++;
 					out.println("RECEIVEDAT");
-
-					log.debug("Realizing Quantized class...");
-					// Load class from bytes
-					// Save 'c' for a bit so GC doesn't remove the class from mem
-					// DONE Add reception for dependency classes (Untested)
-					int numDeps = Integer.parseInt(sc.nextLine());
-					log.debug("Receiving Dependencies...");
-					Class<?>[] classDeps = new Class<?>[numDeps];
-					log.debug("Says there are " + numDeps + " dependencies"); // DONE sendProcess and reception not
-																				// lining up
-					for (int i = 0; i < numDeps; i++) {
-						classDeps[i] = receiveClass(out, sc);
+					log.debug("Receiving CheckSum...");
+					Long chkSum = sc.nextLong();
+					log.debug("GOT: " + chkSum);
+					sc.nextLine();
+					if (loadersByUUID.containsKey(chkSum)) {
+						out.println("EXISTS");
+						loader = loadersByUUID.get(chkSum);
+					} else {
+						out.println("NONEXIST");
+						loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
+						loadersByUUID.put(chkSum, loader);
+						log.debug("Realizing Quantized class...");
+						// Load class from bytes
+						// Save 'c' for a bit so GC doesn't remove the class from mem
+						// DONE Add reception for dependency classes (Untested)
+						int numDeps = Integer.parseInt(sc.nextLine());
+						log.debug("Receiving Dependencies...");
+						Class<?>[] classDeps = new Class<?>[numDeps];
+						log.debug("Says there are " + numDeps + " dependencies"); // DONE sendProcess and reception not
+																					// lining up
+						for (int i = 0; i < numDeps; i++) {
+							classDeps[i] = receiveClass(out, sc);
+						}
+						final Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
+						try {
+							JProcess p = (JProcess) c.newInstance(); // DONE Class not being realized properly, need
+																		// deps
+						} catch (Exception e) {
+							e.printStackTrace();
+							out.println("FAIL:" + e.getMessage());
+						}
+						log.debug("Realized " + c.getName());
 					}
-					final Class<?> c = receiveClass(out, sc); // CODEAT Receive Main class object for JProcess
-					try {
-						JProcess p = (JProcess) c.newInstance(); // DONE Class not being realized properly, need deps
-					} catch (Exception e) {
-						e.printStackTrace();
-						out.println("FAIL:" + e.getMessage());
-					}
-					log.debug("Realized " + c.getName());
 					// Receive size of serialized process
 					int size = sc.nextInt();
 					// Receive process priority of process
@@ -415,8 +488,6 @@ public final class ConnectionManager {
 					try {
 						objIn = new JProcessRealizer(new ByteArrayInputStream(ser));
 						objIn.setClassLoader(loader);
-
-						// TODO Try to instantiate objIn as JSHClassLoader
 					} catch (IllegalArgumentException | SecurityException e) {
 						e.printStackTrace();
 						objIn = new JProcessRealizer(new ByteArrayInputStream(ser));
@@ -424,12 +495,7 @@ public final class ConnectionManager {
 					JProcess processObj;
 					log.debug("Converting to Object");
 					try {
-						processObj = (JProcess) objIn.readObject(); // FIXME Not finding class that has been already
-																	// loaded
-						// successfully,
-						// maybe out of scope? How do I set the scope of objIn to be
-						// the same as the URLClassLoader loading the class into
-						// modules:///??
+						processObj = (JProcess) objIn.readObject();
 					} catch (ClassNotFoundException e) {
 						// If de-serialization fails, throw error to client, cleanup
 						e.printStackTrace();
@@ -443,12 +509,13 @@ public final class ConnectionManager {
 					log.debug("Object converted sucecssfully");
 					objIn.close();
 					// Convert from object to process
+					final InetAddress origin = s.getInetAddress();
 					log.debug("Creating JProcess");
 					JProcess process;
 					try {
 						process = (JProcess) processObj;
 						// Set process to use I/O from Socket
-						process.reInitialize(classDeps);
+						process.reInitialize();
 						process.setOutputStream(out);
 						process.redirectIn(s.getInputStream());
 					} catch (ClassCastException e) {
@@ -498,7 +565,6 @@ public final class ConnectionManager {
 							if (ret == terra.shell.utils.system.ReturnType.VOID) {
 								log.debug("VOID");
 								// Disconnect IO streams to save bandwidth
-								// TODO
 								try {
 									// Cleanup
 									out.flush();
@@ -513,18 +579,6 @@ public final class ConnectionManager {
 							if (ret == terra.shell.utils.system.ReturnType.SYNCHRONOUS) {
 								log.debug("SYNCHRONOUS");
 								// TODO Return
-								if (procMon.getReturn() == null) {
-									// TODO Deal with no return
-								} else {
-									Object[] returnValue = procMon.getReturn().getReturnValue();
-									ReturnObjectWrapper[] retObj = new ReturnObjectWrapper[returnValue.length];
-									out.println("ret:" + returnValue.length);
-									log.debug("Wrapping " + returnValue.length + " returns");
-									for (int i = 0; i < retObj.length; i++) {
-										retObj[i] = new ReturnObjectWrapper(returnValue[i]);
-									}
-									log.debug("Wrapped returns...");
-								}
 								try {
 									// Cleanup
 									out.flush();
@@ -536,11 +590,10 @@ public final class ConnectionManager {
 									e.printStackTrace();
 								}
 							} else if (ret == terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
-								// TODO Schedule a return
 								log.debug("ASYNC");
 								ReturnValue rv = procMon.getReturn();
 								try {
-									sendReturn(procMon.getOrigin(), rv);
+									sendReturn((Inet4Address) origin, rv);
 								} catch (Exception e) {
 									e.printStackTrace();
 									log.err("UNABLE TO SEND RETURN TO ORIGIN: " + procMon.getOrigin().toString());
@@ -572,9 +625,6 @@ public final class ConnectionManager {
 
 				}
 				if (in.equals("RET")) {
-					// TODO Handle ReturnValue reception
-					// Scanner sc
-					// PrintStream out
 					out.println("RECEIVEDAT");
 					try {
 						receiveClass(out, sc);
@@ -597,9 +647,9 @@ public final class ConnectionManager {
 						// Receive and parse new ReturnValue
 						ReturnValue rv = (ReturnValue) objIn.readObject();
 						// Process the ReturnValue through the selected process
-						log.debug("Attempting to find Process of ID: "+rv.getProcessID().toString() + " : " + rv.getSUID().toString());
+						log.debug("Attempting to find Process of ID: " + rv.getProcessID().toString() + " : "
+								+ rv.getSUID().toString());
 						JSHProcesses.getProcess(rv.getSUID()).processReturn(rv);
-						// TODO Determine where to place returnvalue
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -631,8 +681,6 @@ public final class ConnectionManager {
 
 			sendClass(rv.getClass(), out, sc);
 
-			// TODO Serialize ReturnValue instead of resending class, class must already
-			// exist on origin anyways
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			ObjectOutputStream ins = new ObjectOutputStream(bout);
 			ins.writeObject(rv);
@@ -642,8 +690,9 @@ public final class ConnectionManager {
 			for (int i = 0; i < dat.length; i++) {
 				out.println((int) dat[i]);
 			}
+			out.flush();
 			out.println("DONE");
-			// TODO Send return
+			log.debug("Finished sending ReturnValue...");
 			return true;
 		}
 
@@ -663,6 +712,7 @@ public final class ConnectionManager {
 			// Send type of process to server
 			pOut.println("PASSIVE");
 			log.debug("Sent PASSIVE");
+
 			// If Server doesn't respond correctly, close and cleanup
 			final String nextLine = sc.nextLine();
 			if (!nextLine.equals("RECEIVEDAT")) {
@@ -681,13 +731,21 @@ public final class ConnectionManager {
 			log.debug("Quantizing Process...");
 			String classPath = p.getClass().getName().replace('.', '/') + ".class";
 			// Get classes actual bytes in order to reinitialize correctly on host
-			InputStream cin = p.getClass().getClassLoader().getResourceAsStream(classPath);
+			CheckedInputStream cin = new CheckedInputStream(
+					p.getClass().getClassLoader().getResourceAsStream(classPath), new CRC32());
 			LinkedList<Byte> cBytes = new LinkedList<Byte>();
 			int b;
 			while ((b = cin.read()) != -1) {
 				cBytes.add((byte) b);
 			}
 			log.debug("Quantization Complete");
+			boolean remoteExists = false;
+			CRC32 chkSum = (CRC32) cin.getChecksum();
+			log.debug("Sending Checksum...");
+			pOut.println(chkSum.getValue());
+			if (sc.nextLine().equals("EXISTS")) {
+				remoteExists = true;
+			}
 			// Serialize process
 			log.debug("Serializing Process: " + p.getClass().toString());
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
@@ -697,35 +755,34 @@ public final class ConnectionManager {
 			objOut.close();
 			objOut = null;
 			log.debug("Serialization complete!");
-			log.debug("Running dependency check..."); // DONE Annotations not returning correct value??
-			// CODEAT Check for dependencies
-			if (p.getClass().isAnnotationPresent(JProcess.Depends.class)) {
-				Class<?>[] deps = p.getClass().getAnnotation(JProcess.Depends.class).dependencies();
-				pOut.println(deps.length);
-				for (Class<?> d : deps)
-					if (!sendClass(d, pOut, sc)) {
-						log.err("FAILED TO SEND DEPENDENCY CLASS: " + d.getName());
-					}
-			} else
-				pOut.println(0);
+			if (!remoteExists) {
+				log.debug("Running dependency check..."); // DONE Annotations not returning correct value??
+				// CODEAT Check for dependencies
+				if (p.getClass().isAnnotationPresent(JProcess.Depends.class)) {
+					Class<?>[] deps = p.getClass().getAnnotation(JProcess.Depends.class).dependencies();
+					pOut.println(deps.length);
+					for (Class<?> d : deps)
+						if (!sendClass(d, pOut, sc)) {
+							log.err("FAILED TO SEND DEPENDENCY CLASS: " + d.getName());
+						}
+				} else
+					pOut.println(0);
+				log.debug("Finished Dependency Check");
 
-			// TODO Check if annotations are sent to node as well, need to check for
-			// returntype at non-source node
+				log.debug("Sending size of quantized data: " + cBytes.size());
+				pOut.println(cBytes.size());
+				log.debug("Sending class name: " + p.getName());
+				pOut.println(p.getClass().getName());
 
-			log.debug("Finished Dependency Check");
+				log.debug("Sending package name: " + p.getClass().getPackage().getName());
+				pOut.println(p.getClass().getPackage().getName());
 
-			log.debug("Sending size of quantized data: " + cBytes.size());
-			pOut.println(cBytes.size());
-			log.debug("Sending class name: " + p.getName());
-			pOut.println(p.getClass().getName());
-
-			log.debug("Sending package name: " + p.getClass().getPackage().getName());
-			pOut.println(p.getClass().getPackage().getName());
-
-			log.debug("Sending quantized data...");
-			for (Byte by : cBytes) {
-				pOut.println((int) by);
+				log.debug("Sending quantized data...");
+				for (Byte by : cBytes) {
+					pOut.println((int) by);
+				}
 			}
+			pOut.flush();
 
 			// Turn serialized process into byte[]
 			byte[] dat = bout.toByteArray();
@@ -737,6 +794,7 @@ public final class ConnectionManager {
 			for (int i = 0; i < dat.length; i++) {
 				pOut.println((int) dat[i]);
 			}
+			pOut.flush();
 			// Wait for a response
 			String response = sc.nextLine();
 			// If response is FAILURE, close, cleanup
@@ -791,7 +849,7 @@ public final class ConnectionManager {
 			String cName = sc.nextLine();
 			log.debug(cName);
 			String cNamePart[] = cName.split("\\.");
-			log.debug(cNamePart.toString());
+			// log.debug(cNamePart.toString());
 			cName = cNamePart[cNamePart.length - 1];
 			log.debug("Got name: " + cName);
 
@@ -825,10 +883,6 @@ public final class ConnectionManager {
 			}
 			log.debug("Sending class by name of: " + c.getCanonicalName() + " : " + packageName);
 			InputStream cin;
-			// TODO Fix issue with sending dynamically loaded classes, possibly need to keep
-			// a copy of the classes bytecode in memory until completely finished.
-			// MAJOR con of this is memory use will literally double, so possibly consider
-			// better way?
 			cin = c.getClassLoader().getResourceAsStream(c.getName().replace('.', '/') + ".class");
 			if (cin == null) {
 				log.err("Failed to find resource: " + c.getCanonicalName());
@@ -851,6 +905,7 @@ public final class ConnectionManager {
 			for (int i = 0; i < dat.size(); i++) {
 				out.println((int) dat.get(i));
 			}
+			out.flush();
 			log.debug("Process sent");
 			return true;
 		}
@@ -860,12 +915,14 @@ public final class ConnectionManager {
 		private long ping;
 		private Inet4Address ip;
 		private Socket s;
+		private long lastUsed;
 
 		@SuppressWarnings("unused")
 		public Node(Inet4Address ip) throws UnknownHostException, IOException {
 			this.ip = ip;
 			s = new Socket(ip.getHostAddress(), port);
 			updatePing();
+			lastUsed = System.currentTimeMillis();
 		}
 
 		public Node(Inet4Address ip, boolean doPing) throws UnknownHostException, IOException {
@@ -873,18 +930,21 @@ public final class ConnectionManager {
 			s = new Socket(ip.getHostAddress(), port);
 			if (doPing)
 				updatePing();
+			lastUsed = System.currentTimeMillis();
 		}
 
 		public Node(Inet4Address ip, long ping) throws UnknownHostException, IOException {
 			this.ip = ip;
 			s = new Socket(ip.getHostAddress(), port);
 			this.ping = ping;
+			lastUsed = System.currentTimeMillis();
 		}
 
 		@SuppressWarnings("unused")
 		public Node(Socket s) throws IOException {
 			this.s = s;
 			updatePing();
+			lastUsed = System.currentTimeMillis();
 		}
 
 		@SuppressWarnings("unused")
@@ -892,6 +952,7 @@ public final class ConnectionManager {
 			this.ping = ping;
 			this.ip = ip;
 			s = new Socket(ip.getHostAddress(), port);
+			lastUsed = System.currentTimeMillis();
 		}
 
 		public long updatePing() throws IOException {
@@ -901,15 +962,36 @@ public final class ConnectionManager {
 
 		@Override
 		public int compareTo(Node n) {
-			if (ping > n.ping)
+			// Ping ratio calculated based on a max ping of 200ms
+			float pingRatio = (ping / 200);
+			if (pingRatio >= 1)
 				return -1;
-			if (ping < n.ping)
+			float nPingRatio = (n.ping / 200);
+			long timeDelta = (System.currentTimeMillis() - lastUsed);
+			long nTimeDelta = (System.currentTimeMillis() - n.lastUsed);
+
+			// If this Node has a higher ping than 'n' and has been more recently used,
+			// check to see if 'n' has a ping of no more than %10 longer, and if so accept
+			// 'n' as the priority
+			if (pingRatio > nPingRatio) {
+				if (timeDelta < nTimeDelta && !(pingRatio - nPingRatio >= 0.1f)) {
+					return -1;
+				}
 				return 1;
+			}
+			// If this Node has a lower ping than 'n' and has not been used more recently,
+			// check to see if this Node has a ping no more than %10 longer, and if so
+			// accept this Node as priority
+			if (pingRatio < nPingRatio) {
+				if (timeDelta > nTimeDelta && (pingRatio - nPingRatio <= 0.1f))
+					return 1;
+				return -1;
+			}
 			return 0;
 		}
 
 		@SuppressWarnings("unused")
-		public long getPing() {
+		public synchronized long getPing() {
 			return ping;
 		}
 

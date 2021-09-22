@@ -12,6 +12,7 @@ public interface Event {
 	public static final int VERY_LOW = 4;
 
 	public static final String GENERAL_TYPE = "general_type";
+	public static final String INIT_TYPE = "init_type";
 
 	public String getCreator();
 

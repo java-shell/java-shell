@@ -82,7 +82,7 @@ public class Login extends Command {
 	@Override
 	public boolean start() {
 		// Take over terminal stream
-		getLogger().setOutputStream(term.getGOutputStream());
+		setOutputStream(term.getGOutputStream());
 
 		// Load the user info conf
 		Configuration conf = Launch.getConfig("uinf");
@@ -104,14 +104,15 @@ public class Login extends Command {
 		conf = new Configuration(cnf);
 
 		// Attempt to lock the user info conf
-		try {
-			RandomAccessFile raf = new RandomAccessFile(cnf, "rw");
-			raf.getChannel().lock();
-			getLogger().log("\"uinf\" locked successfully");
-		} catch (Exception e) {
-			getLogger().log("Failed to get file lock on uinf");
-			getLogger().err("FAILED TO GET FILE LOCK ON \"uinf\", user login information is susceptible to tampering");
-		}
+		// try {
+		// RandomAccessFile raf = new RandomAccessFile(cnf, "rw");
+		// raf.getChannel().lock();
+		// getLogger().log("\"uinf\" locked successfully");
+		// } catch (Exception e) {
+		// getLogger().log("Failed to get file lock on uinf");
+		// getLogger().err("FAILED TO GET FILE LOCK ON \"uinf\", user login information
+		// is susceptible to tampering");
+		// }
 		// TODO Lock cnf to prevent manipulation
 		// TODO Create MD5 or other Hash file alongside to prevent modification of cnf
 		// when
@@ -217,7 +218,7 @@ public class Login extends Command {
 		char[] u = new char[15];
 		// Read username and password from user input
 		try {
-			while (((b = bin.read()) != '\n') && am < 16) {
+			while (((b = bin.read()) != '\n') && am < 15) {
 				u[am] = (char) b;
 				am++;
 			}
@@ -229,7 +230,7 @@ public class Login extends Command {
 				print = true;
 			else
 				mask.start();
-			while (((b = bin.read()) != '\n') && am < 16) {
+			while (((b = bin.read()) != '\n') && am < 15) {
 				p[am] = (char) b;
 				am++;
 			}

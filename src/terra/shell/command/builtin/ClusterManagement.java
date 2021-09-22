@@ -8,6 +8,7 @@ import java.util.ArrayList;
 
 import terra.shell.command.BasicCommand;
 import terra.shell.launch.Launch;
+import terra.shell.utils.JProcess;
 import terra.shell.utils.perms.Permissions;
 
 public class ClusterManagement extends BasicCommand {
@@ -100,6 +101,12 @@ public class ClusterManagement extends BasicCommand {
 			// Node work load check not yet implemented in ConnectionManager
 			getLogger().log("Node work load checking not yet implemented!");
 			return true;
+		} else if (hasArgument("listProcesses")) {
+			JProcess[] procs = Launch.getConnectionMan().activeProcesses();
+			for (JProcess proc : procs) {
+				getLogger().log(proc.getName() + " : " + proc.getOrigin().toString());
+			}
+			getLogger().log(procs.length + " active processes");
 		}
 		return true;
 	}
