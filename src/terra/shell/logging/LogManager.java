@@ -7,6 +7,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Hashtable;
 
+import terra.shell.utils.streams.UnclosableOutputStream;
+
 /**
  * Resource class used to manage all Loggers registered with it, including all
  * Loggers affiliated with the JProcess class. Generally LogManager should not
@@ -19,9 +21,9 @@ public class LogManager {
 	private static int loggers;
 	private static Hashtable<Integer, Logger> logs = new Hashtable<Integer, Logger>();
 	private static ArrayList<String> logNames = new ArrayList<String>();
-	private static Logger log = new Logger("LogManager", loggers, true);
+	private static Logger log = new Logger("LogManager", loggers, false);
 	public final static PrintStream out = new PrintStream(
-			new BufferedOutputStream(new FileOutputStream(FileDescriptor.out)), true);
+			new UnclosableOutputStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.out))), true);
 	private static boolean writing = false;
 	private static int debug = -1;
 
@@ -31,12 +33,11 @@ public class LogManager {
 	/**
 	 * Creates a Logger with the specified name.
 	 * 
-	 * @param name
-	 *            The Logger's name.
+	 * @param name The Logger's name.
 	 * @return A new Logger.
 	 */
-	public static Logger getLogger(String name) {
-		final Logger l = new Logger(name, loggers, false);
+	public synchronized static Logger getLogger(String name) {
+		final Logger l = new Logger(name, loggers, true);
 		logNames.add(name);
 		logs.put(loggers, l);
 		loggers++;
@@ -49,7 +50,7 @@ public class LogManager {
 	 * 
 	 * @return A new logger.
 	 */
-	public static Logger getLogger() {
+	public synchronized static Logger getLogger() {
 		final Logger l = new Logger(loggers, true);
 		logs.put(loggers, l);
 		loggers++;
@@ -59,10 +60,9 @@ public class LogManager {
 	/**
 	 * Removes the logger from LogManagers list of loggers.
 	 * 
-	 * @param l
-	 *            Logger to be removed.
+	 * @param l Logger to be removed.
 	 */
-	public static void removeLogger(Logger l) {
+	public synchronized static void removeLogger(Logger l) {
 		logs.remove(l.getId());
 		logNames.remove(l.getName());
 	}
@@ -87,10 +87,9 @@ public class LogManager {
 	/**
 	 * Sets whether or not debugging is enabled
 	 * 
-	 * @param debugValue
-	 *            True to enable debugging
+	 * @param debugValue True to enable debugging
 	 */
-	public static void setDebug(boolean debugValue) {
+	public synchronized static void setDebug(boolean debugValue) {
 		if (debugValue)
 			debug = 1;
 		else {
@@ -98,10 +97,13 @@ public class LogManager {
 		}
 	}
 
-	public static void write(String s) {
+	public synchronized static void write(String s) {
 		if (!writing) {
 			writing = true;
-			out.print(s);
+			synchronized (out) {
+				out.print(s);
+				out.flush();
+			}
 			writing = false;
 		} else {
 			try {

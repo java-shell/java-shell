@@ -18,7 +18,7 @@ public class Logger implements Serializable {
 	final private transient String name;
 	final private transient int id;
 	private transient PrintStream out = LogManager.out;
-	private transient PrintStream debug = out;
+	private transient PrintStream debug = LogManager.out;
 	private transient boolean filter = true;
 	private transient boolean useOut = true;
 
@@ -29,7 +29,7 @@ public class Logger implements Serializable {
 	 * @param id   Numerical ID
 	 */
 	public Logger(String name, int id, boolean useOut) {
-		this.useOut = !useOut;
+		this.useOut = useOut;
 		this.id = id;
 		this.name = name + ":" + id;
 		try {
@@ -123,7 +123,7 @@ public class Logger implements Serializable {
 	/**
 	 * End the current line.
 	 */
-	public void endln() {
+	public synchronized void endln() {
 		if (useOut) {
 			out.print("\n");
 			return;
@@ -137,7 +137,7 @@ public class Logger implements Serializable {
 	 * @param s   String to be written.
 	 * @param out PrintStream to write out to.
 	 */
-	public void log(String s, PrintStream out) {
+	public synchronized void log(String s, PrintStream out) {
 		out.print("[" + name + "] " + s + "\n");
 	}
 
@@ -146,12 +146,16 @@ public class Logger implements Serializable {
 	 * 
 	 * @param s String to be written.
 	 */
-	public void print(String s) {
+	public synchronized void print(String s) {
 		if (useOut) {
-			out.print(s);
+			synchronized (out) {
+				out.print(s);
+				out.flush();
+			}
 			return;
 		}
 		LogManager.write(s);
+
 	}
 
 	/**
@@ -167,9 +171,12 @@ public class Logger implements Serializable {
 		debug(s, debug);
 	}
 
-	public void debug(String s, int level, PrintStream out) {
+	public synchronized void debug(String s, int level, PrintStream out) {
 		// TODO Add if statements to clarify debug verbosity
-		debug(s, out);
+		synchronized (out) {
+			debug(s, out);
+			out.flush();
+		}
 	}
 
 	/**
@@ -187,7 +194,7 @@ public class Logger implements Serializable {
 	 * @param s   String to be written
 	 * @param out Stream to write to
 	 */
-	public void debug(String s, PrintStream out) {
+	public synchronized void debug(String s, PrintStream out) {
 		if (LogManager.doDebug()) {
 			log("[DEBUG] " + s + " @:" + LocalDateTime.now().getHour() + ":" + LocalDateTime.now().getMinute() + ":"
 					+ LocalDateTime.now().getSecond(), out);

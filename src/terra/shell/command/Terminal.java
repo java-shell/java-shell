@@ -82,13 +82,18 @@ public final class Terminal extends InteractiveObject {
 		getLogger().print(currentDir.getName() + ">");
 		while (!kill) {
 			try {
-				Thread.sleep(100);
+				synchronized (Thread.currentThread()) {
+					Thread.currentThread().wait(100);
+				}
 			} catch (Exception e) {
+				e.printStackTrace();
 				getLogger().log("Thread failed to sleep");
 			}
 			if (always) {
 				try {
-					in = sc.nextLine();
+					synchronized (gIn) {
+						in = sc.nextLine();
+					}
 					if (in.equals("")) {
 						LogManager.out.print(currentDir.getName() + ">");
 						continue;

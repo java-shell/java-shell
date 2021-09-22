@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.xml.bind.DatatypeConverter;
+//import javax.xml.bind.DatatypeConverter;
 
 import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
@@ -95,10 +95,12 @@ public final class Executor {
 					for (int i = 0; i < entireStream.length; i++)
 						entireStream[i] = md5.get(i);
 					md.update(entireStream);
-					String currentHash = DatatypeConverter.printHexBinary(md.digest()).toUpperCase();
-					if (currentHash != md5Hash) {
-						throw new MD5MismatchException("Expected MD5: " + md5Hash + "\nGot: " + currentHash);
-					}
+					// String currentHash =
+					// DatatypeConverter.printHexBinary(md.digest()).toUpperCase();
+					// if (currentHash != md5Hash) {
+					// throw new MD5MismatchException("Expected MD5: " + md5Hash + "\nGot: " +
+					// currentHash);
+					// }
 					// Redirect 'in' to entireStream[]
 					ByteArrayInputStream bin = new ByteArrayInputStream(entireStream);
 					in = bin;

@@ -58,6 +58,7 @@ public final class ConnectionManager {
 	 * Configure ConnectionManager, INIT LocalServer, run serviceScan
 	 */
 	public ConnectionManager() {
+		log.useOut(false);
 		log.log("Starting Connection Manager...");
 		// Try to open conf file
 		Configuration conf = Launch.getConfig("ClusterService");
@@ -151,17 +152,29 @@ public final class ConnectionManager {
 	 * @return True if process is sent successfully to all nodes, otherwise false.
 	 *         Can be false if only one out 'n' Nodes fails
 	 */
-	public boolean sendToAll(JProcess p, OutputStream out, InputStream in) {
-		boolean succ = true;
-		for (Node n : nodes) {
-			try {
-				ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
-			} catch (Exception e) {
-				e.printStackTrace();
-				succ = false;
-			}
+	public boolean sendToAll(final JProcess p, final OutputStream out, final InputStream in) {
+		for (final Node n : nodes) {
+			JProcess pr = new JProcess() {
+
+				@Override
+				public String getName() {
+					return "SendProc";
+				}
+
+				@Override
+				public boolean start() {
+					try {
+						ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+					} catch (Exception e) {
+						e.printStackTrace();
+						return false;
+					}
+					return true;
+				}
+			};
+			pr.run();
 		}
-		return succ;
+		return true;
 	}
 
 	/**
@@ -677,7 +690,9 @@ public final class ConnectionManager {
 			for (int i = 0; i < dat.length; i++) {
 				out.println((int) dat[i]);
 			}
+			out.flush();
 			out.println("DONE");
+			log.debug("Finished sending ReturnValue...");
 			return true;
 		}
 
@@ -767,6 +782,7 @@ public final class ConnectionManager {
 					pOut.println((int) by);
 				}
 			}
+			pOut.flush();
 
 			// Turn serialized process into byte[]
 			byte[] dat = bout.toByteArray();
@@ -778,6 +794,7 @@ public final class ConnectionManager {
 			for (int i = 0; i < dat.length; i++) {
 				pOut.println((int) dat[i]);
 			}
+			pOut.flush();
 			// Wait for a response
 			String response = sc.nextLine();
 			// If response is FAILURE, close, cleanup
@@ -832,7 +849,7 @@ public final class ConnectionManager {
 			String cName = sc.nextLine();
 			log.debug(cName);
 			String cNamePart[] = cName.split("\\.");
-			log.debug(cNamePart.toString());
+			// log.debug(cNamePart.toString());
 			cName = cNamePart[cNamePart.length - 1];
 			log.debug("Got name: " + cName);
 
@@ -888,6 +905,7 @@ public final class ConnectionManager {
 			for (int i = 0; i < dat.size(); i++) {
 				out.println((int) dat.get(i));
 			}
+			out.flush();
 			log.debug("Process sent");
 			return true;
 		}
