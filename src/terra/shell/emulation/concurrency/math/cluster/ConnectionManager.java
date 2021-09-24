@@ -669,12 +669,8 @@ public final class ConnectionManager {
 						"Socket not prepared for Channel Transfer, or got out of sync with remote resources");
 			}
 			out.println(bytes.length);
-
-			WritableByteChannel wbc = Channels.newChannel(out);
-			ByteBuffer src = ByteBuffer.wrap(bytes);
-			src.flip();
-			wbc.write(src);
-			//out.write(-1);
+			out.write(bytes);
+			out.flush();
 			sc.nextLine();
 			return true;
 		}
