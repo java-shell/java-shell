@@ -17,9 +17,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -28,8 +26,6 @@ import java.util.Queue;
 import java.util.Scanner;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
-
-import com.sun.tools.javac.util.ArrayUtils;
 
 import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
@@ -675,6 +671,21 @@ public final class ConnectionManager {
 			return true;
 		}
 
+		private boolean sendBytes(byte[] bytes, PrintStream out, Scanner sc, SocketChannel c) throws IOException {
+			log.debug("Sent CHANNELTRANSFER");
+			out.println("CHANNELTRANSFER");
+			String next = sc.nextLine();
+			if (!next.equals("CHANNELREADY")) {
+				throw new IOException(
+						"Socket not prepared for Channel Transfer, or got out of sync with remote resources");
+			}
+			out.println(bytes.length);
+			ByteBuffer src = ByteBuffer.wrap(bytes);
+			c.write(src);
+			sc.nextLine();
+			return true;
+		}
+
 		private byte[] readBytes(InputStream in, PrintStream out, Scanner sc) throws IOException {
 			log.debug("Waiting for CHANNELTRANSFER");
 			String next = sc.nextLine();
@@ -684,13 +695,28 @@ public final class ConnectionManager {
 			}
 			out.println("CHANNELREADY");
 			int size = sc.nextInt();
+			sc.nextLine();
 			log.debug("Channel got size " + size);
-			ReadableByteChannel rbc = Channels.newChannel(in);
+			byte[] b = new byte[size];
+			in.read(b);
+			out.println("GOT");
+			return b;
+		}
+
+		private byte[] readBytes(PrintStream out, Scanner sc, SocketChannel c) throws IOException {
+			log.debug("Waiting for CHANNELTRANSFER");
+			String next = sc.nextLine();
+			if (!next.equals("CHANNELTRANSFER")) {
+				throw new IOException(
+						"Socket not prepared for Channel Transfer, or got out of sync with remote resources");
+			}
+			out.println("CHANNELREADY");
+			int size = sc.nextInt();
+			sc.nextLine();
+			log.debug("Channel got size " + size);
 			byte[] b = new byte[size];
 			ByteBuffer src = ByteBuffer.wrap(b);
-			rbc.read(src);
-			src.flip();
-			out.println("GOT");
+			c.read(src);
 			return b;
 		}
 
