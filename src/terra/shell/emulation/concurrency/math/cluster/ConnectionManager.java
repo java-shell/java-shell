@@ -689,23 +689,13 @@ public final class ConnectionManager {
 			out.println("CHANNELREADY");
 			int size = sc.nextInt();
 			log.debug("Channel got size " + size);
-			sc.nextLine();
-			ByteArrayOutputStream bOut = new ByteArrayOutputStream();
 			ReadableByteChannel rbc = Channels.newChannel(in);
-			WritableByteChannel wbc = Channels.newChannel(bOut);
-			ByteBuffer src = ByteBuffer.allocateDirect(size + 100);
-			while (rbc.read(src) != -1) {
-				src.flip();
-				wbc.write(src);
-				while (src.hasRemaining())
-					wbc.write(src);
-				src.clear();
-			}
+			byte[] b = new byte[size];
+			ByteBuffer src = ByteBuffer.wrap(b);
+			rbc.read(src);
 			src.flip();
-			wbc.write(src);
-			bOut.flush();
 			out.println("GOT");
-			return bOut.toByteArray();
+			return b;
 		}
 
 		@SuppressWarnings("resource")
