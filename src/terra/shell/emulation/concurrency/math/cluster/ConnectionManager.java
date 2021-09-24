@@ -674,7 +674,7 @@ public final class ConnectionManager {
 			ByteBuffer src = ByteBuffer.wrap(bytes);
 			src.flip();
 			wbc.write(src);
-			out.write(-1);
+			//out.write(-1);
 			sc.nextLine();
 			return true;
 		}
