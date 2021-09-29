@@ -14,9 +14,11 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -439,6 +441,13 @@ public final class ConnectionManager {
 					// - Execute
 					// - Return
 					log.debug("Passive connection received");
+
+					log.debug("Getting data socket from remote...");
+
+					String portString = sc.nextLine();
+					int port = Integer.parseInt(portString);
+					SocketChannel sockCh = SocketChannel.open(new InetSocketAddress(s.getInetAddress(), port));
+
 					connections++;
 					out.println("RECEIVEDAT");
 					log.debug("Receiving CheckSum...");
@@ -462,10 +471,10 @@ public final class ConnectionManager {
 						log.debug("Says there are " + numDeps + " dependencies"); // DONE sendProcess and reception not
 																					// lining up
 						for (int i = 0; i < numDeps; i++) {
-							classDeps[i] = receiveClass(out, s.getInputStream(), sc, s.getChannel());
+							classDeps[i] = receiveClass(out, s.getInputStream(), sc, sockCh);
 						}
-						final Class<?> c = receiveClass(out, s.getInputStream(), sc, s.getChannel()); // CODEAT Receive
-																										// Main class
+						final Class<?> c = receiveClass(out, s.getInputStream(), sc, sockCh); // CODEAT Receive
+																								// Main class
 						// object
 						// for JProcess
 						try {
@@ -633,8 +642,14 @@ public final class ConnectionManager {
 				if (in.equals("RET")) {
 					out.println("RECEIVEDAT");
 					try {
-						receiveClass(out, s.getInputStream(), sc, s.getChannel());
-						byte[] dat = readBytes(s.getInputStream(), out, sc);
+						log.debug("Getting data socket from remote...");
+
+						String portString = sc.nextLine();
+						int port = Integer.parseInt(portString);
+						SocketChannel sockCh = SocketChannel.open(new InetSocketAddress(s.getInetAddress(), port));
+						
+						receiveClass(out, s.getInputStream(), sc, sockCh);
+						byte[] dat = readBytes(out, sc, sockCh);
 						if (!sc.nextLine().equalsIgnoreCase("DONE")) {
 							log.err("DID NOT RECEIVE \"DONE\" FROM RET SENDER");
 							dat = null;
@@ -677,6 +692,7 @@ public final class ConnectionManager {
 		}
 
 		private boolean sendBytes(byte[] bytes, PrintStream out, Scanner sc, SocketChannel c) throws IOException {
+			log.debug("Sending using SocketChannel");
 			log.debug("Sent CHANNELTRANSFER");
 			out.println("CHANNELTRANSFER");
 			String next = sc.nextLine();
@@ -687,9 +703,14 @@ public final class ConnectionManager {
 			log.debug("GOT CHANNELREADY");
 			out.println(bytes.length);
 			ByteBuffer src = ByteBuffer.wrap(bytes);
-			src.flip();
-			c.write(src);
+			src.rewind();
+			int write = 0;
+			while ((write += c.write(src)) != bytes.length)
+				log.debug(write + "");
+			;
+			log.debug("Wrote " + write + " bytes");
 			sc.nextLine();
+			log.debug("Got end");
 			return true;
 		}
 
@@ -710,11 +731,13 @@ public final class ConnectionManager {
 			while ((read += in.read(b)) != size) {
 				log.debug(read + "");
 			}
+			log.debug(read + "");
 			out.println("GOT");
 			return b;
 		}
 
 		private byte[] readBytes(PrintStream out, Scanner sc, SocketChannel c) throws IOException {
+			log.debug("Reading using SocketChannel");
 			log.debug("Waiting for CHANNELTRANSFER");
 			String next = sc.nextLine();
 			if (!next.equals("CHANNELTRANSFER")) {
@@ -727,7 +750,11 @@ public final class ConnectionManager {
 			log.debug("Channel got size " + size);
 			byte[] b = new byte[size];
 			ByteBuffer src = ByteBuffer.wrap(b);
-			c.read(src);
+			int read = 0;
+			while ((read += c.read(src)) != size) {
+				log.debug(read + "");
+			}
+			out.println("DONE");
 			return b;
 		}
 
@@ -742,7 +769,24 @@ public final class ConnectionManager {
 
 			out.println("RET");
 			log.debug("Sent RET");
-
+			
+			log.debug("Creating data socket channel...");
+			ServerSocketChannel ssc = ServerSocketChannel.open();
+			int port = 2101;
+			while (true)
+				try {
+					ssc.bind(new InetSocketAddress(port));
+					break;
+				} catch (IOException e) {
+					port++;
+					continue;
+				}
+			log.debug("Created channel on port " + port);
+			out.println(ssc.socket().getLocalPort());
+			log.debug("Waiting for connection...");
+			SocketChannel sockCh = ssc.accept();
+			log.debug("Got remote socket connection");
+			
 			final String nextLine = sc.nextLine();
 			if (!nextLine.equals("RECEIVEDAT")) {
 				log.debug("Origin incorrectly responded, expected\"RECEIVEDAT\" got \"" + nextLine + "\"");
@@ -752,7 +796,7 @@ public final class ConnectionManager {
 				return false;
 			}
 
-			sendClass(rv.getClass(), out, s.getInputStream(), sc, s.getChannel());
+			sendClass(rv.getClass(), out, s.getInputStream(), sc, sockCh);
 
 			ByteArrayOutputStream bout = new ByteArrayOutputStream();
 			ObjectOutputStream ins = new ObjectOutputStream(bout);
@@ -760,7 +804,7 @@ public final class ConnectionManager {
 			byte[] dat = bout.toByteArray();
 			log.debug("Sending ReturnValue size of " + dat.length);
 
-			sendBytes(dat, out, sc, s.getChannel());
+			sendBytes(dat, out, sc, sockCh);
 
 			out.println("DONE");
 			log.debug("Finished sending ReturnValue...");
@@ -783,7 +827,22 @@ public final class ConnectionManager {
 			// Send type of process to server
 			pOut.println("PASSIVE");
 			log.debug("Sent PASSIVE");
-
+			log.debug("Creating data socket channel...");
+			ServerSocketChannel ssc = ServerSocketChannel.open();
+			int port = 2101;
+			while (true)
+				try {
+					ssc.bind(new InetSocketAddress(port));
+					break;
+				} catch (IOException e) {
+					port++;
+					continue;
+				}
+			log.debug("Created channel on port " + port);
+			pOut.println(ssc.socket().getLocalPort());
+			log.debug("Waiting for connection...");
+			SocketChannel sockCh = ssc.accept();
+			log.debug("Got remote socket connection");
 			// If Server doesn't respond correctly, close and cleanup
 			final String nextLine = sc.nextLine();
 			if (!nextLine.equals("RECEIVEDAT")) {
@@ -804,11 +863,7 @@ public final class ConnectionManager {
 			// Get classes actual bytes in order to reinitialize correctly on host
 			CheckedInputStream cin = new CheckedInputStream(
 					p.getClass().getClassLoader().getResourceAsStream(classPath), new CRC32());
-			LinkedList<Byte> cBytes = new LinkedList<Byte>();
-			int b;
-			while ((b = cin.read()) != -1) {
-				cBytes.add((byte) b);
-			}
+			byte[] cBytes = cin.readAllBytes();
 			log.debug("Quantization Complete");
 			boolean remoteExists = false;
 			CRC32 chkSum = (CRC32) cin.getChecksum();
@@ -833,15 +888,15 @@ public final class ConnectionManager {
 					Class<?>[] deps = p.getClass().getAnnotation(JProcess.Depends.class).dependencies();
 					pOut.println(deps.length);
 					for (Class<?> d : deps)
-						if (!sendClass(d, pOut, in, sc, s.getChannel())) {
+						if (!sendClass(d, pOut, in, sc, sockCh)) {
 							log.err("FAILED TO SEND DEPENDENCY CLASS: " + d.getName());
 						}
 				} else
 					pOut.println(0);
 				log.debug("Finished Dependency Check");
 
-				log.debug("Sending size of quantized data: " + cBytes.size());
-				pOut.println(cBytes.size());
+				log.debug("Sending size of quantized data: " + cBytes.length);
+				pOut.println(cBytes.length);
 				log.debug("Sending class name: " + p.getName());
 				pOut.println(p.getClass().getName());
 
@@ -849,9 +904,7 @@ public final class ConnectionManager {
 				pOut.println(p.getClass().getPackage().getName());
 
 				log.debug("Sending quantized data...");
-				for (Byte by : cBytes) {
-					pOut.println((int) by);
-				}
+				sendBytes(cBytes, pOut, sc, sockCh);
 			}
 			pOut.flush();
 
@@ -985,6 +1038,8 @@ public final class ConnectionManager {
 
 			log.debug("Sending package name " + packageName);
 			out.println(packageName);
+
+			out.flush();
 
 			if (s != null)
 				sendBytes(dat, out, sc, s);

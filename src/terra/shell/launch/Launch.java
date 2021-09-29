@@ -183,6 +183,7 @@ public class Launch {
 			launchConf.setValue("debug", "false");
 		}
 		if (launchConf.hasID("debug")) {
+			log.log("Checking debug settings...");
 			LogManager.setDebug(Boolean.parseBoolean((String) launchConf.getValue("debug")));
 		}
 		// Check for System configuration, if not found create one and add default

@@ -29,9 +29,8 @@ public class Configuration {
 	/**
 	 * Create a new configuration object
 	 * 
-	 * @param f
-	 *            File to use as the configuration file (Please use
-	 *            Launch.getConfD()'s directory to keep all of your conf files)
+	 * @param f File to use as the configuration file (Please use
+	 *          Launch.getConfD()'s directory to keep all of your conf files)
 	 */
 	public Configuration(File f) {
 		type = 0;
@@ -42,8 +41,7 @@ public class Configuration {
 	/**
 	 * Create a virtual read-only configuration object using an InputStream
 	 * 
-	 * @param f
-	 *            An InputStream which contains configuration information.
+	 * @param f An InputStream which contains configuration information.
 	 */
 	public Configuration(InputStream f) {
 		type = 1;
@@ -54,8 +52,7 @@ public class Configuration {
 	/**
 	 * Create a configuration object using a URL
 	 * 
-	 * @param f
-	 *            The URL to look at for configuration information
+	 * @param f The URL to look at for configuration information
 	 */
 	public Configuration(URL f) {
 		type = 2;
@@ -64,13 +61,13 @@ public class Configuration {
 	}
 
 	protected void parse() {
-		//Check the configuration file exists
+		// Check the configuration file exists
 		if (!f.exists())
 			return;
 		InputStream tmp = null;
-		//Check the conf type, and deal with it accordingly
+		// Check the conf type, and deal with it accordingly
 		if (type == 0) {
-			//Conf is a local file
+			// Conf is a local file
 			try {
 				tmp = new FileInputStream(f);
 			} catch (Exception e) {
@@ -79,11 +76,11 @@ public class Configuration {
 			}
 		}
 		if (type == 1) {
-			//Conf is being served through a stream
+			// Conf is being served through a stream
 			tmp = in;
 		}
 		if (type == 2) {
-			//Conf is being served through a URL
+			// Conf is being served through a URL
 			try {
 				tmp = u.openStream();
 			} catch (Exception e) {
@@ -94,22 +91,22 @@ public class Configuration {
 			log.log("Failed to get InputStream for Configuration!");
 			return;
 		}
-		//Begin reading the conf information
+		// Begin reading the conf information
 		Scanner sc = new Scanner(tmp);
 		String st;
 		while (sc.hasNext() && (st = sc.nextLine()) != null) {
-			//Check if the line is a comment, if not, parse
+			// Check if the line is a comment, if not, parse
 			if (!st.startsWith("#")) {
 				final String[] bk = st.split(":");
 				if (bk.length == 2) {
-					//Check for variable declarations in the conf, and substitute
+					// Check for variable declarations in the conf, and substitute
 					if (bk[1].contains("%")) {
 						final String tm = Variables.getVarValue(bk[2]);
 						if (tm != null) {
 							bk[1] = tm;
 						}
 					}
-					//Save configuration declarations in memory
+					// Save configuration declarations in memory
 					vlist.put(bk[0], bk[1]);
 				} else {
 					if (bk.length == 1)
@@ -126,8 +123,7 @@ public class Configuration {
 	/**
 	 * Get a configuration value as an object
 	 * 
-	 * @param id
-	 *            The key used to identify the value required
+	 * @param id The key used to identify the value required
 	 * @return The value requested
 	 */
 	public Object getValue(String id) {
@@ -140,8 +136,7 @@ public class Configuration {
 	/**
 	 * Attempts to convert the value assigned to 'id' to an int
 	 * 
-	 * @param id
-	 *            The key used to identify the value required
+	 * @param id The key used to identify the value required
 	 * @return The value requested as an int
 	 */
 	public int getValueAsInt(String id) {
@@ -164,7 +159,7 @@ public class Configuration {
 		}
 		return 0;
 	}
-	
+
 	public int getType() {
 		return type;
 	}
@@ -172,22 +167,19 @@ public class Configuration {
 	/**
 	 * Checks if a value has been assigned to this id
 	 * 
-	 * @param id
-	 *            The id who's value is being asserted
+	 * @param id The id who's value is being asserted
 	 * @return True if the id has a value, or exists
 	 */
 	public boolean hasID(String id) {
-		return vlist.contains(id);
+		return vlist.containsKey(id);
 	}
 
 	/**
 	 * Sets a configuration value (Only works if the configuration was constructed
 	 * with a File object, otherwise does nothing
 	 * 
-	 * @param id
-	 *            Key used to identify this value
-	 * @param value
-	 *            Value to placed in the configuration
+	 * @param id    Key used to identify this value
+	 * @param value Value to placed in the configuration
 	 */
 	public void setValue(String id, Object value) {
 		vlist.put(id, value);
@@ -195,7 +187,7 @@ public class Configuration {
 	}
 
 	protected void _write() {
-		//Writes the configuration
+		// Writes the configuration
 		Set<String> keys = vlist.keySet();
 		try {
 			if (type == 0) {
