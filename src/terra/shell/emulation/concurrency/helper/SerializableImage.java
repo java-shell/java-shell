@@ -18,6 +18,8 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterOutputStream;
 
+import terra.shell.logging.LogManager;
+
 public class SerializableImage extends BufferedImageNonserializableConstructor implements Serializable {
 	private transient Image i;
 
@@ -62,6 +64,7 @@ public class SerializableImage extends BufferedImageNonserializableConstructor i
 	}
 
 	private void writeObject(ObjectOutputStream s) throws IOException, InterruptedException {
+		long start = System.currentTimeMillis();
 		s.defaultWriteObject();
 		int w = i.getWidth(null);
 		int h = i.getHeight(null);
@@ -79,9 +82,11 @@ public class SerializableImage extends BufferedImageNonserializableConstructor i
 		s.writeInt(w);
 		s.writeInt(h);
 		s.writeObject(bOut.toByteArray());
+		LogManager.write("Took " + (System.currentTimeMillis() - start) + "ms to serialize image");
 	}
 
 	private void readObject(ObjectInputStream in) throws ClassNotFoundException, IOException {
+		long start = System.currentTimeMillis();
 		in.defaultReadObject();
 		int w = in.readInt();
 		int h = in.readInt();
@@ -98,6 +103,7 @@ public class SerializableImage extends BufferedImageNonserializableConstructor i
 		Toolkit tk = Toolkit.getDefaultToolkit();
 		ColorModel cm = ColorModel.getRGBdefault();
 		i = tk.createImage(new MemoryImageSource(w, h, cm, pixels, 0, w));
+		LogManager.write("Took " + (System.currentTimeMillis() - start) + "ms to de-serialize image");
 	}
 
 }
