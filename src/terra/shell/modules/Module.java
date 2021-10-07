@@ -76,6 +76,9 @@ public abstract class Module implements Serializable {
 	 */
 	public abstract void trigger(Event event);
 
+	public void init() {
+	}
+
 	/**
 	 * Lets think real hard about this one for a second...
 	 */

@@ -78,6 +78,8 @@ public final class ModuleManagement {
 							final ArrayList<String> rff = new ArrayList<String>();
 							while (r.hasNext()) {
 								final String line = r.nextLine();
+								if (line.startsWith("#"))
+									continue;
 								final File fr = new File(prefix, "/modules/" + s + "/" + line);
 								rf.add(fr);
 								rff.add(line);
@@ -91,12 +93,12 @@ public final class ModuleManagement {
 							for (int i = 0; i < res.length; i++) {
 								res[i] = rf.get(i);
 								ures[i] = rff.get(i);
-								if (res[i].getName().endsWith(".jar"))
+								if (res[i].getName().endsWith(".jar")) {
 									jarRes.add(res[i]);
+								}
 							}
 							bcl = new ByteClassLoader(
-									new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") },
-									Launch.getClassLoader());
+									new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
 							if (jarRes.size() != 0) {
 								URL[] urls = new URL[jarRes.size() + 1];
 								urls[0] = new URL("file://" + prefix.getAbsolutePath() + "/modules/");
@@ -104,7 +106,7 @@ public final class ModuleManagement {
 								for (int i = 1; i < urls.length; i++) {
 									urls[i] = new URL("jar:file:" + files.next().getAbsolutePath() + "!/");
 								}
-								bcl = new ByteClassLoader(urls, Launch.getClassLoader());
+								bcl = new ByteClassLoader(urls);
 							}
 
 							log.log("Loading resource classes for " + s);
@@ -151,6 +153,7 @@ public final class ModuleManagement {
 								final Class<?> classtmp = bcl.loadClass(s + ".module");
 								final Module mod = (Module) classtmp.newInstance();
 								modules.put(mod.getName(), mod);
+								mod.init();
 								Thread t = new Thread(new Runnable() {
 									public void run() {
 										try {
