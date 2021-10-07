@@ -6,14 +6,17 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.Scanner;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 import terra.shell.utils.system.ByteClassLoader;
-import terra.shell.utils.system.EventManager;
 import terra.shell.utils.system.JSHClassLoader;
 
 /**
@@ -28,7 +31,7 @@ public final class ModuleManagement {
 	static Hashtable<String, Module> modules = new Hashtable<String, Module>();
 	static Hashtable<Module, Thread> mThreads = new Hashtable<Module, Thread>();
 	private static Logger log = LogManager.getLogger("MM");
-	final ByteClassLoader bcl = Launch.getClassLoader();
+	private ByteClassLoader bcl = Launch.getClassLoader();
 	static boolean isStarted;
 
 	/**
@@ -56,7 +59,8 @@ public final class ModuleManagement {
 					File prefix = Launch.getConfD().getParentFile();
 
 					Scanner sc = new Scanner(new FileInputStream(mods));
-					JSHClassLoader urlc = new JSHClassLoader(new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
+					JSHClassLoader urlc = new JSHClassLoader(
+							new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
 
 					if (Launch.modularizedCmds) {
 
@@ -83,18 +87,52 @@ public final class ModuleManagement {
 
 							final File[] res = new File[rf.size()];
 							final String[] ures = new String[rff.size()];
+							final HashSet<File> jarRes = new HashSet<File>();
 							for (int i = 0; i < res.length; i++) {
 								res[i] = rf.get(i);
 								ures[i] = rff.get(i);
+								if (res[i].getName().endsWith(".jar"))
+									jarRes.add(res[i]);
 							}
-							final ByteClassLoader bcl = Launch.getClassLoader();
+							bcl = new ByteClassLoader(
+									new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") },
+									Launch.getClassLoader());
+							if (jarRes.size() != 0) {
+								URL[] urls = new URL[jarRes.size() + 1];
+								urls[0] = new URL("file://" + prefix.getAbsolutePath() + "/modules/");
+								Iterator<File> files = jarRes.iterator();
+								for (int i = 1; i < urls.length; i++) {
+									urls[i] = new URL("jar:file:" + files.next().getAbsolutePath() + "!/");
+								}
+								bcl = new ByteClassLoader(urls, Launch.getClassLoader());
+							}
 
 							log.log("Loading resource classes for " + s);
 							for (int i = 0; (i < res.length); i++) {
+								if (res[i].getName().endsWith(".jar")) {
+									log.log("Found " + res[i].getName() + ", loading...");
+
+									JarFile jf = new JarFile(res[i]);
+									Enumeration<JarEntry> entries = jf.entries();
+									while (entries.hasMoreElements()) {
+										JarEntry el = entries.nextElement();
+										if (el.isDirectory() || !el.getName().endsWith(".class")
+												|| el.getName().contains("META-INF")) {
+											continue;
+										}
+										log.debug("Attempting to load " + el.getName());
+										String className = el.getName().replace('/', '.').substring(0,
+												el.getName().length() - 6);
+										Class<?> c = bcl.loadClass(className);
+									}
+									jf.close();
+									log.log("Successfully loaded jar dependency " + res[i].getName());
+									continue;
+								}
 								if (!res[i].getName().equals(s + ".module") && !res[i].getName().equals("res.list")
 										&& !res[i].isDirectory()) {
 									try {
-										urlc.loadClass(ures[i]);
+										bcl.loadClass(ures[i]);
 										log.log("Loaded resource class " + res[i].getName() + " for " + s);
 									} catch (Exception e) {
 										log.log("Failed to load resource class " + res[i].getPath());
@@ -110,7 +148,7 @@ public final class ModuleManagement {
 						}
 						if (f.exists()) {
 							try {
-								final Class<?> classtmp = urlc.loadClass(s + ".module");
+								final Class<?> classtmp = bcl.loadClass(s + ".module");
 								final Module mod = (Module) classtmp.newInstance();
 								modules.put(mod.getName(), mod);
 								Thread t = new Thread(new Runnable() {
@@ -155,8 +193,7 @@ public final class ModuleManagement {
 	/**
 	 * Load a module into a running system (CAUTION can be unstable)
 	 * 
-	 * @param f
-	 *            The module.class to load
+	 * @param f The module.class to load
 	 */
 	public static void hotload(final File f) {
 		final File pd = f.getParentFile();
@@ -221,8 +258,7 @@ public final class ModuleManagement {
 	/**
 	 * Attempt to disable the module with this ID.
 	 * 
-	 * @param id
-	 *            Module to disable.
+	 * @param id Module to disable.
 	 */
 	public static void disable(String id) {
 		if (modules.containsKey(id)) {
@@ -260,8 +296,7 @@ public final class ModuleManagement {
 	/**
 	 * Enable the module with this ID.
 	 * 
-	 * @param id
-	 *            Module to Enable.
+	 * @param id Module to Enable.
 	 */
 	public static void enable(String id) {
 		if (modules.containsKey(id)) {
