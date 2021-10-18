@@ -88,6 +88,9 @@ public abstract class JProcess implements Serializable {
 		init();
 	}
 
+	/**
+	 * Prepare the JProcess to be serialized.
+	 */
 	public final void prepSerialization() {
 		this.name = getName();
 	}
@@ -127,6 +130,9 @@ public abstract class JProcess implements Serializable {
 		return null;
 	}
 
+	/**
+	 * Create the ReturnValue object internally
+	 */
 	public void createReturn() {
 	}
 

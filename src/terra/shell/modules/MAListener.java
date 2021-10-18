@@ -5,7 +5,8 @@ import terra.shell.utils.keys.Event;
 import terra.shell.utils.system.EventListener;
 
 /**
- * Nothing to see here, its all good in the neighborhood
+ * Creates an EventListener object specific to a Module, only used by
+ * ModuleManagement after Module loading
  * 
  * @author dan
  * 

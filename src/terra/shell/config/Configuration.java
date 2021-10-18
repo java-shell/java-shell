@@ -60,6 +60,9 @@ public class Configuration {
 		parse();
 	}
 
+	/**
+	 * Parse the configuration files contents
+	 */
 	protected void parse() {
 		// Check the configuration file exists
 		if (!f.exists())
@@ -186,6 +189,9 @@ public class Configuration {
 		_write();
 	}
 
+	/**
+	 * Save the configuration values back to the local file
+	 */
 	protected void _write() {
 		// Writes the configuration
 		Set<String> keys = vlist.keySet();

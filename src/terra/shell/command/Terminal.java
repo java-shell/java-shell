@@ -20,7 +20,7 @@ import terra.shell.utils.streams.InputStreamBuffer;
 import terra.shell.utils.streams.OutputStreamMonitorBuffer;
 
 /**
- * CLI Interface for the shell
+ * CLI Interface for the JSH
  * 
  * @author dan
  * 
@@ -37,7 +37,7 @@ public final class Terminal extends InteractiveObject {
 	private boolean respawn;
 
 	/**
-	 * Create a new terminal letting JSH determine the direction of its output
+	 * Create a new terminal with default settings
 	 */
 	public Terminal() {
 	}
@@ -52,7 +52,7 @@ public final class Terminal extends InteractiveObject {
 	}
 
 	/**
-	 * Attempt to kill terminal, will not always work
+	 * Attempt to kill terminal, will not always work as it essentially alerts the Terminal to stop, not actually killing it.
 	 */
 	@Override
 	public void halt() {
@@ -215,7 +215,7 @@ public final class Terminal extends InteractiveObject {
 	 * Run a specific command, calling it using the returned string from
 	 * Command.getName();
 	 * 
-	 * @param cmd  String referring to the Command
+	 * @param cmd  String reference to the Command
 	 * @param args Arguments to pass to the command
 	 * @return True if the command is run successfully, false otherwise
 	 */
@@ -229,16 +229,16 @@ public final class Terminal extends InteractiveObject {
 	}
 
 	/**
-	 * Get the directory this terminal is currently looking at
+	 * Get the directory this terminal is currently working in
 	 * 
-	 * @return The directory currently being looked at
+	 * @return The directory currently working in
 	 */
 	public File currentDir() {
 		return currentDir;
 	}
 
 	/**
-	 * Change the directory which this terminal is looking at
+	 * Change the directory which this terminal is working in
 	 * 
 	 * @param dir A new directory
 	 */

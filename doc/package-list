@@ -1,6 +1,8 @@
 terra.shell.command
 terra.shell.command.builtin
 terra.shell.config
+terra.shell.emulation.concurrency.helper
+terra.shell.emulation.concurrency.math.cluster
 terra.shell.launch
 terra.shell.logging
 terra.shell.modules
@@ -17,3 +19,4 @@ terra.shell.utils.system.executable
 terra.shell.utils.system.timings
 terra.shell.utils.system.types
 terra.shell.utils.system.user
+tests

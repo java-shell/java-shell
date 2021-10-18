@@ -20,9 +20,20 @@ import java.util.zip.InflaterOutputStream;
 
 import terra.shell.logging.LogManager;
 
+/**
+ * Creates an Image object that can be serialized, and de-serialized
+ * 
+ * @author schirripad@moravian.edu
+ *
+ */
 public class SerializableImage extends BufferedImageNonserializableConstructor implements Serializable {
 	private transient Image i;
 
+	/**
+	 * Create a SerializableImage object wrapped around a BufferedImage
+	 * 
+	 * @param i
+	 */
 	public SerializableImage(BufferedImage i) {
 		super(i.getWidth(), i.getHeight(), i.getType());
 		this.i = (Image) i;

@@ -38,6 +38,13 @@ import terra.shell.utils.ReturnValue;
 import terra.shell.utils.system.JSHClassLoader;
 import terra.shell.utils.system.JSHProcesses;
 
+/**
+ * Manages connections to JSH's Cluster Node Network. Used to send, receive, and
+ * monitor all Clustering interactions
+ * 
+ * @author schirripad@moravian.edu
+ *
+ */
 public final class ConnectionManager {
 
 	private JSHClassLoader loader;
@@ -330,12 +337,22 @@ public final class ConnectionManager {
 		return true;
 	}
 
+	/**
+	 * See all Active JProcesses from remote sources
+	 * 
+	 * @return
+	 */
 	public JProcess[] activeProcesses() {
 		JProcess[] procs = new JProcess[ls.processes.size()];
 		procs = ls.processes.toArray(procs);
 		return procs;
 	}
 
+	/**
+	 * Check the number of available Nodes on the network
+	 * 
+	 * @return Number of total Nodes on the network
+	 */
 	public int numberOfNodes() {
 		return nodes.size();
 	}
@@ -647,7 +664,7 @@ public final class ConnectionManager {
 						String portString = sc.nextLine();
 						int port = Integer.parseInt(portString);
 						SocketChannel sockCh = SocketChannel.open(new InetSocketAddress(s.getInetAddress(), port));
-						
+
 						receiveClass(out, s.getInputStream(), sc, sockCh);
 						byte[] dat = readBytes(out, sc, sockCh);
 						if (!sc.nextLine().equalsIgnoreCase("DONE")) {
@@ -769,7 +786,7 @@ public final class ConnectionManager {
 
 			out.println("RET");
 			log.debug("Sent RET");
-			
+
 			log.debug("Creating data socket channel...");
 			ServerSocketChannel ssc = ServerSocketChannel.open();
 			int port = 2101;
@@ -786,7 +803,7 @@ public final class ConnectionManager {
 			log.debug("Waiting for connection...");
 			SocketChannel sockCh = ssc.accept();
 			log.debug("Got remote socket connection");
-			
+
 			final String nextLine = sc.nextLine();
 			if (!nextLine.equals("RECEIVEDAT")) {
 				log.debug("Origin incorrectly responded, expected\"RECEIVEDAT\" got \"" + nextLine + "\"");

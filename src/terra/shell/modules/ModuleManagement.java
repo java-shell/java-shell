@@ -34,14 +34,6 @@ public final class ModuleManagement {
 	private ByteClassLoader bcl = Launch.getClassLoader();
 	static boolean isStarted;
 
-	/**
-	 * Shirt Front: Read Back.<br>
-	 * Shirt Back: Read Front.
-	 */
-	public void halt() {
-		return;
-	}
-
 	public String getName() {
 		return "MM";
 	}

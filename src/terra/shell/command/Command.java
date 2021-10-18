@@ -29,6 +29,9 @@ public abstract class Command extends JProcess {
 	@Override
 	public abstract String getName();
 
+	/**
+	 * Creates an unlinked instance of Command, which needs to be assigned to a Terminal
+	 */
 	public Command() {
 		super();
 	}
