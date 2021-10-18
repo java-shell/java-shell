@@ -60,7 +60,9 @@ import terra.shell.utils.system.JSHClassLoader;
 import terra.shell.utils.system.Variables;
 
 /**
- * Just, don't even try. Itll blow your mind...
+ * Launches JSH, Launch Initialization is completed in Stages, and at each
+ * individual stage, an InitEvent is fired signaling the completion of that
+ * stage
  * 
  * @author dan
  * 
@@ -183,6 +185,7 @@ public class Launch {
 			launchConf.setValue("debug", "false");
 		}
 		if (launchConf.hasID("debug")) {
+			log.log("Checking debug settings...");
 			LogManager.setDebug(Boolean.parseBoolean((String) launchConf.getValue("debug")));
 		}
 		// Check for System configuration, if not found create one and add default
@@ -326,16 +329,27 @@ public class Launch {
 	}
 
 	// Halt JSH
+	/**
+	 * Signal JSH main thread to return
+	 */
 	public static void stop() {
 		keepergone = false;
 	}
 
 	// Returns configuration directory, <prefix>/config
+	/**
+	 * Returns the main confguration directory for JSH
+	 * 
+	 * @return Directory containing all configuration files
+	 */
 	public static File getConfD() {
 		return confD;
 	}
 
 	// Load configurations from confD
+	/**
+	 * Load configuration files from the assigned configuration directory
+	 */
 	public static void loadConfigs() {
 		log.log("Loading Configurations from " + fPrefix + "/config...");
 		// Check if dir exists, if false create new dir
@@ -362,6 +376,12 @@ public class Launch {
 	}
 
 	// Get a config
+	/**
+	 * Get a configuration file
+	 * 
+	 * @param conf String key representing Configuration Name
+	 * @return Assigned configuration, or NULL if not found
+	 */
 	public static Configuration getConfig(String conf) {
 		if (confs.containsKey(conf)) {
 			return confs.get(conf);
@@ -370,17 +390,30 @@ public class Launch {
 	}
 
 	// Get all loaded commands
+	/**
+	 * Returns all loaded commands
+	 * 
+	 * @return All loaded commands
+	 */
 	public static Hashtable<String, Command> getCmds() {
 		return cmds;
 	}
 
 	// Get the cluster ConnectionManager
+	/**
+	 * Returns the current ClusterManager object
+	 * 
+	 * @return
+	 */
 	public static ConnectionManager getConnectionMan() {
 		return clusterManager;
 	}
 
 	// TODO enable remote repositories for commands
 	// Load in commands
+	/**
+	 * Reads the source for Command Loading, be it a Repository, or local directory
+	 */
 	public static void readBin() {
 		final File bin = new File(fPrefix + "/bin/jsh");
 		// Check if dir exists
@@ -539,15 +572,26 @@ public class Launch {
 		s.close();
 	}
 
+	/**
+	 * UNIMPLEMENTED
+	 */
 	public static void doHibernate() {
 		doHib = true; // TODO Add handler to anticipate hibernate attack, (Add
 						// cooldown timer)
 	}
 
+	/**
+	 * UNIMPLEMENTED
+	 */
 	public static void noHibernate() {
 		doHib = false;
 	}
 
+	/**
+	 * UNIMPLEMENTED
+	 * 
+	 * @return
+	 */
 	public static boolean willHibernate() {
 		return doHib;
 	}
@@ -561,6 +605,9 @@ public class Launch {
 	}
 
 	// Reload commands
+	/**
+	 * Reload the commands, utilizes the readBin() method
+	 */
 	public static void rlCmds() {
 		cmds.clear();
 		cmds = new Hashtable<String, Command>();
@@ -581,6 +628,13 @@ public class Launch {
 	}
 
 	// Register a device, EVDEV
+	/**
+	 * Register an evdev event listener
+	 * 
+	 * @param inter
+	 * @param dev
+	 * @deprecated
+	 */
 	public static void regDev(String inter, String dev) {
 		final EventType tmp = EventInterpreter.getType(inter);
 		if (tmp != null) {
@@ -592,6 +646,11 @@ public class Launch {
 		}
 	}
 
+	/**
+	 * Initialization Event wrapper
+	 * @author schirripad@moravian.edu
+	 *
+	 */
 	public final class InitEvent implements Event {
 		private final InitStage stage;
 
@@ -611,6 +670,11 @@ public class Launch {
 
 	}
 
+	/**
+	 * Initialization Stages
+	 * @author schirripad@moravian.edu
+	 *
+	 */
 	public static enum InitStage {
 		EARLY_INIT, LOAD_CONFIG, LOAD_COMMANDS, LOAD_MODULES, CLUSTER_INIT, INIT_COMPLETION
 	}

@@ -94,11 +94,7 @@ public class Logger implements Serializable {
 	 * @param s Array Of String to be written.
 	 */
 	public void log(String[] s) {
-		// print("[" + name + "]");
-		// for (int i = 0; i < s.length; i++) {
-		// print(s[i] + " ");
-		// }
-		// endln();
+
 		chkVar(s);
 		actual(s);
 	}

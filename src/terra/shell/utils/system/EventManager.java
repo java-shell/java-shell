@@ -30,6 +30,7 @@ public final class EventManager {
 	public static void registerListener(EventListener el, String evtype) {
 		if (listeners.containsKey(evtype)) {
 			listeners.get(evtype).add(el);
+			log.debug("Registered listener for event: " + evtype);
 		}
 	}
 
@@ -42,6 +43,7 @@ public final class EventManager {
 	 */
 	public static void registerEvType(String type) {
 		listeners.put(type, new ArrayList<EventListener>());
+		log.debug("Add new event registration type: " + type);
 	}
 
 	/**
@@ -84,7 +86,7 @@ public final class EventManager {
 			for (int i = 0; i < avail.size(); i++) {
 				avail.get(i).trigger(e);
 				// CODEAT Debug line
-				 log.log("Triggering: " + e.getCreator());
+				log.debug("Triggering: " + e.getCreator());
 			}
 			id = null;
 		} catch (Exception e1) {

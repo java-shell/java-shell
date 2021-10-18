@@ -24,16 +24,33 @@ public class ByteClassLoader extends URLClassLoader {
 	// TODO Find better way to reload dynamically loaded classes
 	protected HashMap<String, ClassData> loaded;
 
+	/**
+	 * Create a ByteClassLoader which can access Files located at the given URLs
+	 * 
+	 * @param url
+	 * @param parent
+	 */
 	public ByteClassLoader(URL[] url, ClassLoader parent) {
 		super(url, parent);
 		loaded = new HashMap<String, ClassData>();
 	}
 
+	/**
+	 * Create a ByteClassLoader which can access Files located at the given URLs
+	 * 
+	 * @param url
+	 */
 	public ByteClassLoader(URL[] url) {
 		super(url);
 		loaded = new HashMap<String, ClassData>();
 	}
 
+	/**
+	 * Retrieve a Class object from the given byte array
+	 * 
+	 * @param b
+	 * @return
+	 */
 	public Class<?> getClass(byte[] b) {
 		Class<?> tmp = defineClass(b, 0, b.length);
 		resolveClass(tmp);
@@ -41,6 +58,13 @@ public class ByteClassLoader extends URLClassLoader {
 		return tmp;
 	}
 
+	/**
+	 * Retrieve a Class object from the given byte array, using the given Name
+	 * 
+	 * @param name
+	 * @param b
+	 * @return
+	 */
 	public Class<?> getClass(String name, byte[] b) {
 		if (loaded.containsKey(name)) {
 			if ((loaded.get(name).getChk() != generateCRC(b))) {
@@ -63,6 +87,15 @@ public class ByteClassLoader extends URLClassLoader {
 		return tmp;
 	}
 
+	/**
+	 * Retrieve a Class object from the given byte array, using the given Name and
+	 * Package
+	 * 
+	 * @param name
+	 * @param pkg
+	 * @param b
+	 * @return
+	 */
 	public Class<?> getClass(String name, String pkg, byte[] b) {
 		if (loaded.containsKey(name)) {
 			if ((loaded.get(name).getChk() != generateCRC(b))) {
@@ -106,12 +139,24 @@ public class ByteClassLoader extends URLClassLoader {
 		return super.getResourceAsStream(name);
 	}
 
+	/**
+	 * Generate a CRC associated with incoming byte array
+	 * 
+	 * @param b
+	 * @return
+	 */
 	protected final CRC32 generateCRC(byte[] b) {
 		CRC32 chk = new CRC32();
 		chk.update(b, 0, b.length);
 		return chk;
 	}
 
+	/**
+	 * Information Storage Object for each Class loaded by this ClassLoader
+	 * 
+	 * @author schirripad@moravian.edu
+	 *
+	 */
 	protected final class ClassData {
 		private byte[] b;
 		private CRC32 chk;
@@ -136,6 +181,15 @@ public class ByteClassLoader extends URLClassLoader {
 		}
 	}
 
+	/**
+	 * The Replaceable annotation states what to do in the case of a duplicate class
+	 * load. If the annotation is marked 'true' the previously loaded instance will
+	 * be flushed and replaced with the newly loaded one. Otherwise the new one will
+	 * be disposed of and the loader will return the previously loaded instance.
+	 * 
+	 * @author schirripad@moravian.edu
+	 *
+	 */
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ ElementType.LOCAL_VARIABLE, ElementType.TYPE })
 	public @interface Replaceable {

@@ -25,6 +25,11 @@ import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 import terra.shell.utils.system.Variables;
 
+/**
+ * UNIMPLEMENTED 
+ * @author schirripad@moravian.edu
+ *
+ */
 public class EncryptedConfiguration extends Configuration {
 	private static Key key = new SecretKeySpec("f_+=4dshi%ot6)ew2534890*&^hjkl%4$78fhjdksu".getBytes(), "AES");
 	private Logger log = LogManager.getLogger("EncryptedConfiguration");

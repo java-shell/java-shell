@@ -52,7 +52,11 @@ public abstract class JProcess implements Serializable {
 	private final void init() {
 		if (firstInit) {
 			try {
-				origin = (Inet4Address) Inet4Address.getLocalHost();
+				try {
+					origin = (Inet4Address) Inet4Address.getLocalHost();
+				} catch (ClassCastException e) {
+					origin = (Inet4Address) Inet4Address.getLoopbackAddress();
+				}
 				firstInit = false;
 			} catch (java.net.UnknownHostException e) {
 				e.printStackTrace();
@@ -84,7 +88,9 @@ public abstract class JProcess implements Serializable {
 		init();
 	}
 
-
+	/**
+	 * Prepare the JProcess to be serialized.
+	 */
 	public final void prepSerialization() {
 		this.name = getName();
 	}
@@ -123,8 +129,12 @@ public abstract class JProcess implements Serializable {
 	public ReturnValue getReturn() {
 		return null;
 	}
-	
-	public void createReturn() {}
+
+	/**
+	 * Create the ReturnValue object internally
+	 */
+	public void createReturn() {
+	}
 
 	/**
 	 * Stops this process, if not otherwise changed this code will simply kill the
@@ -224,14 +234,14 @@ public abstract class JProcess implements Serializable {
 				ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
 			}
 			if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
-				log.debug("Process "+getName()+ " not marked ASYNC, removing");
+				log.debug("Process " + getName() + " not marked ASYNC, removing");
 				JSHProcesses.stopProcess(me);
 				// Cleanup
 				LogManager.removeLogger(log);
 				sUID = null;
 				halt();
 			} else {
-				log.debug("Not halting process "+getName()+ " as process is marked ASYNC");
+				log.debug("Not halting process " + getName() + " as process is marked ASYNC");
 			}
 		} catch (Exception e) {
 			LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
@@ -279,13 +289,13 @@ public abstract class JProcess implements Serializable {
 						ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
 					}
 					if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
-						log.debug("Process "+getName()+ " not marked ASYNC, removing");
+						log.debug("Process " + getName() + " not marked ASYNC, removing");
 						JSHProcesses.stopProcess(me);
 						// Cleanup
 						LogManager.removeLogger(log);
 						sUID = null;
 					} else {
-						log.debug("Not halting process "+getName()+ " as process is marked ASYNC");
+						log.debug("Not halting process " + getName() + " as process is marked ASYNC");
 					}
 					halt();
 				}
@@ -347,9 +357,9 @@ public abstract class JProcess implements Serializable {
 	public final UUID getUUID() {
 		return u;
 	}
-	
+
 	public final void setSUID(UUID sUID) {
-		if(isRunning()) {
+		if (isRunning()) {
 			return;
 		}
 		this.sUID = sUID;

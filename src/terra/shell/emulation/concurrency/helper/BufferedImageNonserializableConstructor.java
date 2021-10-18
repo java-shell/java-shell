@@ -2,6 +2,13 @@ package terra.shell.emulation.concurrency.helper;
 
 import java.awt.image.BufferedImage;
 
+/**
+ * Parent class for SerializableImage, acts as skeleton for serialization and
+ * de-serialization of SerializableImage
+ * 
+ * @author schirripad@moravian.edu
+ *
+ */
 public class BufferedImageNonserializableConstructor extends BufferedImage {
 
 	public BufferedImageNonserializableConstructor() {

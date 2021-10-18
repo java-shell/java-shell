@@ -4,10 +4,9 @@ import terra.shell.utils.keys.Event;
 import terra.shell.utils.system.EventManager;
 
 /**
- * Event used to communicate with modules without being within the same
- * scope of the modules. This event will invoke itself using
- * EventManager.invokeEvent() and therefore does not need to be invoked
- * manually.
+ * Event used to communicate with modules without being within the same scope of
+ * the modules. This event will invoke itself using EventManager.invokeEvent()
+ * and therefore does not need to be invoked manually.
  * 
  * @author dan
  * 
@@ -17,12 +16,10 @@ public class ModuleEvent {
 	private String type;
 
 	/**
-	 * I'm a constructor.
+	 * Create a DummyEvent to be fired towards the Module named
 	 * 
-	 * @param type
-	 *            Module name to send event to.
-	 * @param args
-	 *            Arguments to send to the module.
+	 * @param type Module name to send event to.
+	 * @param args Arguments to send to the module.
 	 */
 	public ModuleEvent(String type, Object... args) {
 		this.args = args;

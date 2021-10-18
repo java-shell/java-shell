@@ -76,8 +76,12 @@ public abstract class Module implements Serializable {
 	 */
 	public abstract void trigger(Event event);
 
+	public void init() {
+	}
+
 	/**
-	 * Lets think real hard about this one for a second...
+	 * Registers the Module with the EventManager, initializes the event listener,
+	 * and begins the Module in the current thread
 	 */
 	public void start() {
 		EventManager.registerEvType("M:" + getName());

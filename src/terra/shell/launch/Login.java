@@ -219,6 +219,8 @@ public class Login extends Command {
 		// Read username and password from user input
 		try {
 			while (((b = bin.read()) != '\n') && am < 15) {
+				if (b == -1)
+					continue;
 				u[am] = (char) b;
 				am++;
 			}

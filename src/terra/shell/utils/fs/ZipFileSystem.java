@@ -11,7 +11,7 @@ import terra.shell.logging.Logger;
 
 /**
  * A class that allows reading and writing to and from a ZipFile as if it were a
- * filesystem
+ * filesystem UNFINISHED
  * 
  * @author schirripad@moravian.edu
  *
@@ -64,8 +64,7 @@ public class ZipFileSystem {
 	/**
 	 * List all the files within a specific ZipFile
 	 * 
-	 * @param d
-	 *            The File within the ZipFile that is being read from as a directory
+	 * @param d The File within the ZipFile that is being read from as a directory
 	 * @return A list of Files found under the parent directory 'd'
 	 */
 	public static File[] listFiles(File d) {
@@ -106,8 +105,7 @@ public class ZipFileSystem {
 	/**
 	 * Get a file represented by a String location within the ZipFile
 	 * 
-	 * @param fn
-	 *            The String path to use to find the File
+	 * @param fn The String path to use to find the File
 	 * @return The File representing the data stored in the ZipFile at the location
 	 *         determined by the String 'fn'
 	 */

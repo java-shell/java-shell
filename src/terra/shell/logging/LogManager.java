@@ -90,6 +90,7 @@ public class LogManager {
 	 * @param debugValue True to enable debugging
 	 */
 	public synchronized static void setDebug(boolean debugValue) {
+		log.log("Debugging set to " + debugValue);
 		if (debugValue)
 			debug = 1;
 		else {
