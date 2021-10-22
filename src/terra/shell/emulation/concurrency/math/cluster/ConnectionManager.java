@@ -46,6 +46,20 @@ import terra.shell.utils.system.JSHProcesses;
  *
  */
 public final class ConnectionManager {
+	
+	/*
+	 * Implement Do-It-Later Programming ConnectionManager expansion.
+	 * Do-It-Later programming:
+	 * 		Send base informaton for storage on remote Node
+	 * 		Send execution message, execute code and send ReturnValue.
+	 * 		Example:
+	 * 			Send assets to be worked on to remote node before execution is necessary
+	 * 			In Image editing, send the a series of subimages to all Nodes involved before editing is utilized.
+	 * 			When an edit is made, send an execution command to each Node, and allow the Node to edit the image.
+	 * 			Upon editing completion, package all the sub-images into a ReturnValue and send them back to the origin
+	 * 				Node, then compile the sub-images into one large image.
+	 */
+	
 
 	private JSHClassLoader loader;
 	// TODO Categorize Classloaders by UUID in order to allow deloading of classes
