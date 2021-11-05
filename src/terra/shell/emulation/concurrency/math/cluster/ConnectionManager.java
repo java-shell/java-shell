@@ -12,17 +12,19 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketAddress;
+import java.net.SocketException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Scanner;
@@ -46,20 +48,18 @@ import terra.shell.utils.system.JSHProcesses;
  *
  */
 public final class ConnectionManager {
-	
+
 	/*
-	 * Implement Do-It-Later Programming ConnectionManager expansion.
-	 * Do-It-Later programming:
-	 * 		Send base informaton for storage on remote Node
-	 * 		Send execution message, execute code and send ReturnValue.
-	 * 		Example:
-	 * 			Send assets to be worked on to remote node before execution is necessary
-	 * 			In Image editing, send the a series of subimages to all Nodes involved before editing is utilized.
-	 * 			When an edit is made, send an execution command to each Node, and allow the Node to edit the image.
-	 * 			Upon editing completion, package all the sub-images into a ReturnValue and send them back to the origin
-	 * 				Node, then compile the sub-images into one large image.
+	 * Implement Do-It-Later Programming ConnectionManager expansion. Do-It-Later
+	 * programming: Send base informaton for storage on remote Node Send execution
+	 * message, execute code and send ReturnValue. Example: Send assets to be worked
+	 * on to remote node before execution is necessary In Image editing, send the a
+	 * series of subimages to all Nodes involved before editing is utilized. When an
+	 * edit is made, send an execution command to each Node, and allow the Node to
+	 * edit the image. Upon editing completion, package all the sub-images into a
+	 * ReturnValue and send them back to the origin Node, then compile the
+	 * sub-images into one large image.
 	 */
-	
 
 	private JSHClassLoader loader;
 	// TODO Categorize Classloaders by UUID in order to allow deloading of classes
@@ -67,8 +67,9 @@ public final class ConnectionManager {
 	// TODO Need to reserve UUID slot when passive load call is received, should set
 	// UUID upon request, not instantiation
 	private Hashtable<Long, JSHClassLoader> loadersByUUID = new Hashtable<Long, JSHClassLoader>();
+	private HashSet<String> localAddresses = new HashSet<String>();
 
-	private Queue<Node> nodes = new PriorityQueue<Node>();
+	private static Queue<Node> nodes = new PriorityQueue<Node>();
 	private Logger log = LogManager.getLogger("ClusterManager");
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
@@ -136,10 +137,24 @@ public final class ConnectionManager {
 
 		// Scan for other servers on the LAN
 		try {
+			getLocalAddresses();
 			serviceScan();
 		} catch (Exception e) {
 			e.printStackTrace();
 			log.err("Failed to run service scan: " + e.getMessage());
+		}
+	}
+
+	private void getLocalAddresses() throws SocketException {
+		Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
+		while (nics.hasMoreElements()) {
+			NetworkInterface nic = nics.nextElement();
+			Enumeration<InetAddress> addresses = nic.getInetAddresses();
+			while (addresses.hasMoreElements()) {
+				String address = addresses.nextElement().getHostAddress();
+				localAddresses.add(address);
+				log.log("Adding " + address + " to local addresses registry");
+			}
 		}
 	}
 
@@ -274,33 +289,30 @@ public final class ConnectionManager {
 	public void serviceScan() throws IOException {
 		log.log("Running service scan...");
 
-		Socket s = new Socket();
 		String ip = ipFormat;
-		PrintStream out;
-		Scanner sc;
 		// Scan all IP's from range 1-253
-		InetSocketAddress rolling;
+		InetSocketAddress rollingAdd;
 		for (int i = ipScanRangeMin; i <= ipScanRangeMax; i++) {
-			try {
-				// Adjust IP to scan next device on network
-				rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
-				// Attempt a connection to a possible Node
-				s.connect(rolling, 200);
-				// If connection completes, get Socket IO
-				out = new PrintStream(s.getOutputStream());
-				sc = new Scanner(s.getInputStream());
-				// Ping the possible Node
-				out.println("PING");
-				String in = sc.nextLine();
-				if (in.equals("CCSERVER")) {
-					// This is indeed a server, client server handshake is complete
-					Node n = new Node((Inet4Address) s.getInetAddress(), false);
-					nodes.add(n);
+			final InetSocketAddress rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
+			if (localAddresses.contains(rolling.getAddress().getHostAddress()))
+				continue;
+			Thread t = new Thread(new Runnable() {
+				public void run() {
+					try {
+						// Adjust IP to scan next device on network
+						if (rolling.getAddress().isReachable(200)) {
+							log.log("Host up at " + rolling.toString() + ", checking for JSH");
+							if (ping(rolling.getAddress().getHostAddress()) != -1) {
+								// This is indeed a server, client server handshake is complete
+								addNode((Inet4Address) rolling.getAddress());
+							}
+						}
+					} catch (Exception e) {
+					}
 				}
-			} catch (Exception e) {
-			}
+			});
+			t.start();
 		}
-		s.close();
 		log.log("Found: " + nodes.size() + " nodes");
 	}
 
