@@ -25,9 +25,12 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 
@@ -74,7 +77,8 @@ public final class ConnectionManager {
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
 	private int port = 2100, activeProcessLimit = 20, passiveProcessLimit = 10, connectionLimit = 5, ipScanRangeMin = 1,
-			ipScanRangeMax = 253, handshakeTimeout = 1000;
+			ipScanRangeMax = 253, handshakeTimeout = 200, nodeCheckInterval = 60;
+	private Timer checkNodesTimer;
 
 	// TODO
 	// Finish setting up defaults
@@ -100,7 +104,8 @@ public final class ConnectionManager {
 			conf.setValue("connectionLimit", 5);
 			conf.setValue("ipScanRangeMin", 1);
 			conf.setValue("ipScanRangeMax", 253);
-			conf.setValue("handshakeTimeout", 1000);
+			conf.setValue("handshakeTimeout", 200);
+			conf.setValue("nodeCheckInterval", 60);
 			// TODO Finish setting up Default values
 		} else {
 			// If conf exists, gather configuration options
@@ -111,6 +116,7 @@ public final class ConnectionManager {
 			passiveProcessLimit = conf.getValueAsInt("passiveProcessLimit");
 			connectionLimit = conf.getValueAsInt("connectionLimit");
 			handshakeTimeout = conf.getValueAsInt("handshakeTimeout");
+			nodeCheckInterval = conf.getValueAsInt("nodeCheckInterval");
 
 			int ipScanMin = conf.getValueAsInt("ipScanRangeMin");
 			int ipScanMax = conf.getValueAsInt("ipScanRangeMax");
@@ -143,8 +149,25 @@ public final class ConnectionManager {
 			e.printStackTrace();
 			log.err("Failed to run service scan: " + e.getMessage());
 		}
+
+		// Create and Schedule a check to ensure each Nodes connection over time
+		checkNodesTimer = new Timer();
+		checkNodesTimer.schedule(new TimerTask() {
+
+			@Override
+			public void run() {
+				checkNodesAlive();
+			}
+
+		}, 0, (nodeCheckInterval * 1000));
 	}
 
+	/**
+	 * Scan for what InetAddresses are assigned to this device, in order to avoid
+	 * connecting to the localhost during serviceScan() and other general operations
+	 * 
+	 * @throws SocketException
+	 */
 	private void getLocalAddresses() throws SocketException {
 		Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
 		while (nics.hasMoreElements()) {
@@ -174,9 +197,12 @@ public final class ConnectionManager {
 			// Select top Node based on Node.compareTo
 			// Compares Nodes based on overall ping, as well as time since last usage
 			Node n = nodes.poll();
-			ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+			boolean success = ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
 			n.updatePing();
+			n.lastUsed = System.currentTimeMillis();
 			nodes.add(n);
+			if (!success)
+				queueProcess(p, out, in);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -245,7 +271,7 @@ public final class ConnectionManager {
 		log.debug("Sending PING request", 2);
 		Socket s = new Socket();
 		// Connect to Node host
-		s.connect(new InetSocketAddress(ip, port), 1000);
+		s.connect(new InetSocketAddress(ip, port), handshakeTimeout);
 		log.debug("Pinging: " + s.getInetAddress().getHostAddress());
 		// Initialize Socket IO
 		PrintStream out = new PrintStream(s.getOutputStream());
@@ -300,7 +326,7 @@ public final class ConnectionManager {
 				public void run() {
 					try {
 						// Adjust IP to scan next device on network
-						if (rolling.getAddress().isReachable(200)) {
+						if (rolling.getAddress().isReachable(handshakeTimeout)) {
 							log.log("Host up at " + rolling.toString() + ", checking for JSH");
 							if (ping(rolling.getAddress().getHostAddress()) != -1) {
 								// This is indeed a server, client server handshake is complete
@@ -381,6 +407,43 @@ public final class ConnectionManager {
 	 */
 	public int numberOfNodes() {
 		return nodes.size();
+	}
+
+	/**
+	 * Check to see if the available Nodes are still alive on the cluster
+	 */
+	private void checkNodesAlive() {
+		final Iterator<Node> nit = nodes.iterator();
+		while (nit.hasNext())
+			new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					Node n = nit.next();
+					try {
+						// Check if the Node is reachable
+						if (!n.getIPv4().isReachable(200)) {
+							nodes.remove(n);
+							return;
+						}
+						// If the Node is reachable, and it has been 5 minutes or more since the last
+						// ping, update the ping
+						if ((System.currentTimeMillis() - n.lastPinged) >= (300000)) {
+							long ping = ping(n.getIPv4());
+							if (ping == -1) {
+								nodes.remove(n);
+							} else {
+								n.lastPinged = System.currentTimeMillis();
+								n.ping = ping;
+							}
+						}
+					} catch (IOException e) {
+						nodes.remove(n);
+					}
+				}
+
+			}).start();
+
 	}
 
 	/**
@@ -491,6 +554,14 @@ public final class ConnectionManager {
 					int port = Integer.parseInt(portString);
 					SocketChannel sockCh = SocketChannel.open(new InetSocketAddress(s.getInetAddress(), port));
 
+					if (connections >= passiveProcessLimit) {
+						out.println("OVER_LIMIT");
+						out.flush();
+						out.close();
+						sc.close();
+						s.close();
+						return;
+					}
 					connections++;
 					out.println("RECEIVEDAT");
 					log.debug("Receiving CheckSum...");
@@ -1099,7 +1170,7 @@ public final class ConnectionManager {
 		private long ping;
 		private Inet4Address ip;
 		private Socket s;
-		private long lastUsed;
+		private long lastUsed, lastPinged;
 
 		@SuppressWarnings("unused")
 		public Node(Inet4Address ip) throws UnknownHostException, IOException {
@@ -1122,6 +1193,7 @@ public final class ConnectionManager {
 			s = new Socket(ip.getHostAddress(), port);
 			this.ping = ping;
 			lastUsed = System.currentTimeMillis();
+			lastPinged = System.currentTimeMillis();
 		}
 
 		@SuppressWarnings("unused")
@@ -1141,6 +1213,7 @@ public final class ConnectionManager {
 
 		public long updatePing() throws IOException {
 			ping = ping(ip);
+			lastPinged = System.currentTimeMillis();
 			return ping;
 		}
 
