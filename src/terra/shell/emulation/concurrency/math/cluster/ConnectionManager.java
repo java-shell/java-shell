@@ -419,7 +419,15 @@ public final class ConnectionManager {
 
 				@Override
 				public void run() {
-					Node n = nit.next();
+					Node n;
+					try {
+					synchronized (nit) {
+						n = nit.next();
+					}
+					}catch(Exception e) {
+						e.printStackTrace();
+						return;
+					}
 					try {
 						// Check if the Node is reachable
 						if (!n.getIPv4().isReachable(200)) {

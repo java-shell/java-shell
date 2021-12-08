@@ -55,7 +55,11 @@ public final class Updater {
 		URL updateJarDownload = new URL("https://repo.java-shell.com/" + remoteVersion + ".jar");
 		File updateJar = new File(Launch.getConfD().getParent(), remoteVersion + ".jar");
 		FileOutputStream jarOut = new FileOutputStream(updateJar);
+		// Open the URL and download to the file location
 		updateJarDownload.openStream().transferTo(jarOut);
+		jarOut.flush();
+		jarOut.close();
+		// Create run.sh shell script for launching on restart
 		File runSh = new File(Launch.getConfD().getParent(), "run.sh");
 		if (!runSh.exists()) {
 			runSh.createNewFile();
@@ -66,6 +70,10 @@ public final class Updater {
 		out.println("java -jar " + updateJar.getAbsolutePath());
 		out.flush();
 		out.close();
+		// Set the script to be executable
+		runSh.setExecutable(true);
+		// Add the shutdown hook
+		Runtime.getRuntime().addShutdownHook(new Thread(new UpdateShutdownHook()));
 		return updateJar;
 	}
 
@@ -79,14 +87,16 @@ public final class Updater {
 		return conf;
 	}
 
-	private final class UpdateShutdownHook implements Runnable {
+	private static final class UpdateShutdownHook implements Runnable {
 
 		@Override
 		public void run() {
 			// TODO Launch a separate process which waits until this JSH instance is
 			// completely destroyed, and then restarts a new instance
 			try {
-				Runtime.getRuntime().exec("");
+				String path = Launch.getConfD().getParent().toString() + "/run.sh";
+				log.log("Command path is: " + path);
+				Runtime.getRuntime().exec("sh " + path);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
