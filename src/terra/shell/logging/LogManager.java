@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 
 import terra.shell.utils.streams.UnclosableOutputStream;
+import terra.shell.utils.system.GeneralVariable;
+import terra.shell.utils.system.Variables;
 
 /**
  * Resource class used to manage all Loggers registered with it, including all
@@ -73,9 +75,21 @@ public class LogManager {
 	 * @return True if debugging is enabled
 	 */
 	public static boolean doDebug() {
+
+		// Check for session assigned value using Variables
+		String doDbg;
+		if ((doDbg = Variables.getVarValue("debug")) != null) {
+			if (Boolean.parseBoolean(doDbg)) {
+				return true;
+			} else
+				return false;
+		}
+
+		// If a Variable is not found, use the default from the configuration file, or 1
+		// if a default wasn't defined
 		if (debug == -1) {
 			log.log("Value for \"debug\" in launch conf not found, temporarily assigning the value of true");
-			debug = 1;
+			setDebug(true);
 		}
 		if (debug == 1) {
 			return true;
@@ -91,6 +105,7 @@ public class LogManager {
 	 */
 	public synchronized static void setDebug(boolean debugValue) {
 		log.log("Debugging set to " + debugValue);
+		Variables.setVar(new GeneralVariable("debug", "" + debugValue));
 		if (debugValue)
 			debug = 1;
 		else {

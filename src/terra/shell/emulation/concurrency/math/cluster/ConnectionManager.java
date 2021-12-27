@@ -409,22 +409,38 @@ public final class ConnectionManager {
 		return nodes.size();
 	}
 
+	public NodeInfo[] nodes() {
+		NodeInfo[] t = new NodeInfo[nodes.size()];
+		Node[] n = new Node[t.length];
+		n = nodes.toArray(n);
+		for (int i = 0; i < n.length; i++)
+			t[i] = new NodeInfo(n[i]);
+		return t;
+	}
+
 	/**
 	 * Check to see if the available Nodes are still alive on the cluster
 	 */
 	private void checkNodesAlive() {
 		final Iterator<Node> nit = nodes.iterator();
 		while (nit.hasNext())
+			// FIXME Should either implement sleep between iterations, or check count to
+			// avoid
+			// race condition
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
 					Node n;
 					try {
-					synchronized (nit) {
-						n = nit.next();
-					}
-					}catch(Exception e) {
+						synchronized (nit) {
+							// Dirty way of solving this race condition
+							if (nit.hasNext())
+								n = nit.next();
+							else
+								return;
+						}
+					} catch (Exception e) {
 						e.printStackTrace();
 						return;
 					}
@@ -1263,6 +1279,31 @@ public final class ConnectionManager {
 		@SuppressWarnings("unused")
 		public Inet4Address getIPv4() {
 			return ip;
+		}
+
+	}
+
+	public class NodeInfo {
+		private Node n;
+
+		public NodeInfo(Node n) {
+			this.n = n;
+		}
+
+		public String getIp() {
+			return n.ip.toString();
+		}
+
+		public long lastUsed() {
+			return n.lastUsed;
+		}
+
+		public long ping() {
+			return n.ping;
+		}
+
+		public long lastPinged() {
+			return n.lastPinged;
 		}
 	}
 }

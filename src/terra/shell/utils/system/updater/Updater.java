@@ -17,7 +17,7 @@ public final class Updater {
 
 	private static final Configuration conf = getConf();
 
-	private static final int versionID = 11212021;
+	private static final int versionID = 12182021;
 	private static final String ip = "http://repo.java-shell.com";
 	private static final Logger log = LogManager.getLogger("UpdateManager");
 	private static boolean hasUpdates = false;
