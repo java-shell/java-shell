@@ -423,27 +423,12 @@ public final class ConnectionManager {
 	 */
 	private void checkNodesAlive() {
 		final Iterator<Node> nit = nodes.iterator();
-		while (nit.hasNext())
-			// FIXME Should either implement sleep between iterations, or check count to
-			// avoid
-			// race condition
+		while (nit.hasNext()) {
+			final Node n = nit.next();
 			new Thread(new Runnable() {
 
 				@Override
 				public void run() {
-					Node n;
-					try {
-						synchronized (nit) {
-							// Dirty way of solving this race condition
-							if (nit.hasNext())
-								n = nit.next();
-							else
-								return;
-						}
-					} catch (Exception e) {
-						e.printStackTrace();
-						return;
-					}
 					try {
 						// Check if the Node is reachable
 						if (!n.getIPv4().isReachable(200)) {
@@ -467,6 +452,7 @@ public final class ConnectionManager {
 				}
 
 			}).start();
+		}
 
 	}
 
