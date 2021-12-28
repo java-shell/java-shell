@@ -21,6 +21,7 @@ import java.util.Scanner;
 import terra.shell.command.Command;
 import terra.shell.command.Terminal;
 import terra.shell.command.builtin.Chdir;
+import terra.shell.command.builtin.Clear;
 import terra.shell.command.builtin.ClusterManagement;
 import terra.shell.command.builtin.CmdHistory;
 import terra.shell.command.builtin.Compile;
@@ -326,6 +327,9 @@ public class Launch {
 		PWD pwd = new PWD();
 		cmds.put(pwd.getName(), pwd);
 		log.log("Loaded embedded command: " + pwd.getName());
+		Clear clear = new Clear();
+		cmds.put(clear.getName(), clear);
+		log.log("Loaded embedded command: " + clear.getName());
 	}
 
 	// Halt JSH

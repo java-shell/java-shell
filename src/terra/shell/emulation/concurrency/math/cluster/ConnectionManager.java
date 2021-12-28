@@ -12,20 +12,25 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketAddress;
+import java.net.SocketException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 
@@ -47,19 +52,33 @@ import terra.shell.utils.system.JSHProcesses;
  */
 public final class ConnectionManager {
 
+	/*
+	 * Implement Do-It-Later Programming ConnectionManager expansion. Do-It-Later
+	 * programming: Send base informaton for storage on remote Node Send execution
+	 * message, execute code and send ReturnValue. Example: Send assets to be worked
+	 * on to remote node before execution is necessary In Image editing, send the a
+	 * series of subimages to all Nodes involved before editing is utilized. When an
+	 * edit is made, send an execution command to each Node, and allow the Node to
+	 * edit the image. Upon editing completion, package all the sub-images into a
+	 * ReturnValue and send them back to the origin Node, then compile the
+	 * sub-images into one large image.
+	 */
+
 	private JSHClassLoader loader;
 	// TODO Categorize Classloaders by UUID in order to allow deloading of classes
 	// by removing the classloader (Possibly serialVersionUID??
 	// TODO Need to reserve UUID slot when passive load call is received, should set
 	// UUID upon request, not instantiation
 	private Hashtable<Long, JSHClassLoader> loadersByUUID = new Hashtable<Long, JSHClassLoader>();
+	private HashSet<String> localAddresses = new HashSet<String>();
 
-	private Queue<Node> nodes = new PriorityQueue<Node>();
+	private static Queue<Node> nodes = new PriorityQueue<Node>();
 	private Logger log = LogManager.getLogger("ClusterManager");
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
 	private int port = 2100, activeProcessLimit = 20, passiveProcessLimit = 10, connectionLimit = 5, ipScanRangeMin = 1,
-			ipScanRangeMax = 253, handshakeTimeout = 1000;
+			ipScanRangeMax = 253, handshakeTimeout = 200, nodeCheckInterval = 60;
+	private Timer checkNodesTimer;
 
 	// TODO
 	// Finish setting up defaults
@@ -85,7 +104,8 @@ public final class ConnectionManager {
 			conf.setValue("connectionLimit", 5);
 			conf.setValue("ipScanRangeMin", 1);
 			conf.setValue("ipScanRangeMax", 253);
-			conf.setValue("handshakeTimeout", 1000);
+			conf.setValue("handshakeTimeout", 200);
+			conf.setValue("nodeCheckInterval", 60);
 			// TODO Finish setting up Default values
 		} else {
 			// If conf exists, gather configuration options
@@ -96,6 +116,7 @@ public final class ConnectionManager {
 			passiveProcessLimit = conf.getValueAsInt("passiveProcessLimit");
 			connectionLimit = conf.getValueAsInt("connectionLimit");
 			handshakeTimeout = conf.getValueAsInt("handshakeTimeout");
+			nodeCheckInterval = conf.getValueAsInt("nodeCheckInterval");
 
 			int ipScanMin = conf.getValueAsInt("ipScanRangeMin");
 			int ipScanMax = conf.getValueAsInt("ipScanRangeMax");
@@ -122,10 +143,41 @@ public final class ConnectionManager {
 
 		// Scan for other servers on the LAN
 		try {
+			getLocalAddresses();
 			serviceScan();
 		} catch (Exception e) {
 			e.printStackTrace();
 			log.err("Failed to run service scan: " + e.getMessage());
+		}
+
+		// Create and Schedule a check to ensure each Nodes connection over time
+		checkNodesTimer = new Timer();
+		checkNodesTimer.schedule(new TimerTask() {
+
+			@Override
+			public void run() {
+				checkNodesAlive();
+			}
+
+		}, 0, (nodeCheckInterval * 1000));
+	}
+
+	/**
+	 * Scan for what InetAddresses are assigned to this device, in order to avoid
+	 * connecting to the localhost during serviceScan() and other general operations
+	 * 
+	 * @throws SocketException
+	 */
+	private void getLocalAddresses() throws SocketException {
+		Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
+		while (nics.hasMoreElements()) {
+			NetworkInterface nic = nics.nextElement();
+			Enumeration<InetAddress> addresses = nic.getInetAddresses();
+			while (addresses.hasMoreElements()) {
+				String address = addresses.nextElement().getHostAddress();
+				localAddresses.add(address);
+				log.log("Adding " + address + " to local addresses registry");
+			}
 		}
 	}
 
@@ -145,9 +197,12 @@ public final class ConnectionManager {
 			// Select top Node based on Node.compareTo
 			// Compares Nodes based on overall ping, as well as time since last usage
 			Node n = nodes.poll();
-			ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+			boolean success = ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
 			n.updatePing();
+			n.lastUsed = System.currentTimeMillis();
 			nodes.add(n);
+			if (!success)
+				queueProcess(p, out, in);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -216,7 +271,7 @@ public final class ConnectionManager {
 		log.debug("Sending PING request", 2);
 		Socket s = new Socket();
 		// Connect to Node host
-		s.connect(new InetSocketAddress(ip, port), 1000);
+		s.connect(new InetSocketAddress(ip, port), handshakeTimeout);
 		log.debug("Pinging: " + s.getInetAddress().getHostAddress());
 		// Initialize Socket IO
 		PrintStream out = new PrintStream(s.getOutputStream());
@@ -260,33 +315,30 @@ public final class ConnectionManager {
 	public void serviceScan() throws IOException {
 		log.log("Running service scan...");
 
-		Socket s = new Socket();
 		String ip = ipFormat;
-		PrintStream out;
-		Scanner sc;
 		// Scan all IP's from range 1-253
-		InetSocketAddress rolling;
+		InetSocketAddress rollingAdd;
 		for (int i = ipScanRangeMin; i <= ipScanRangeMax; i++) {
-			try {
-				// Adjust IP to scan next device on network
-				rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
-				// Attempt a connection to a possible Node
-				s.connect(rolling, 200);
-				// If connection completes, get Socket IO
-				out = new PrintStream(s.getOutputStream());
-				sc = new Scanner(s.getInputStream());
-				// Ping the possible Node
-				out.println("PING");
-				String in = sc.nextLine();
-				if (in.equals("CCSERVER")) {
-					// This is indeed a server, client server handshake is complete
-					Node n = new Node((Inet4Address) s.getInetAddress(), false);
-					nodes.add(n);
+			final InetSocketAddress rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
+			if (localAddresses.contains(rolling.getAddress().getHostAddress()))
+				continue;
+			Thread t = new Thread(new Runnable() {
+				public void run() {
+					try {
+						// Adjust IP to scan next device on network
+						if (rolling.getAddress().isReachable(handshakeTimeout)) {
+							log.log("Host up at " + rolling.toString() + ", checking for JSH");
+							if (ping(rolling.getAddress().getHostAddress()) != -1) {
+								// This is indeed a server, client server handshake is complete
+								addNode((Inet4Address) rolling.getAddress());
+							}
+						}
+					} catch (Exception e) {
+					}
 				}
-			} catch (Exception e) {
-			}
+			});
+			t.start();
 		}
-		s.close();
 		log.log("Found: " + nodes.size() + " nodes");
 	}
 
@@ -355,6 +407,53 @@ public final class ConnectionManager {
 	 */
 	public int numberOfNodes() {
 		return nodes.size();
+	}
+
+	public NodeInfo[] nodes() {
+		NodeInfo[] t = new NodeInfo[nodes.size()];
+		Node[] n = new Node[t.length];
+		n = nodes.toArray(n);
+		for (int i = 0; i < n.length; i++)
+			t[i] = new NodeInfo(n[i]);
+		return t;
+	}
+
+	/**
+	 * Check to see if the available Nodes are still alive on the cluster
+	 */
+	private void checkNodesAlive() {
+		final Iterator<Node> nit = nodes.iterator();
+		while (nit.hasNext()) {
+			final Node n = nit.next();
+			new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					try {
+						// Check if the Node is reachable
+						if (!n.getIPv4().isReachable(200)) {
+							nodes.remove(n);
+							return;
+						}
+						// If the Node is reachable, and it has been 5 minutes or more since the last
+						// ping, update the ping
+						if ((System.currentTimeMillis() - n.lastPinged) >= (300000)) {
+							long ping = ping(n.getIPv4());
+							if (ping == -1) {
+								nodes.remove(n);
+							} else {
+								n.lastPinged = System.currentTimeMillis();
+								n.ping = ping;
+							}
+						}
+					} catch (IOException e) {
+						nodes.remove(n);
+					}
+				}
+
+			}).start();
+		}
+
 	}
 
 	/**
@@ -465,6 +564,14 @@ public final class ConnectionManager {
 					int port = Integer.parseInt(portString);
 					SocketChannel sockCh = SocketChannel.open(new InetSocketAddress(s.getInetAddress(), port));
 
+					if (connections >= passiveProcessLimit) {
+						out.println("OVER_LIMIT");
+						out.flush();
+						out.close();
+						sc.close();
+						s.close();
+						return;
+					}
 					connections++;
 					out.println("RECEIVEDAT");
 					log.debug("Receiving CheckSum...");
@@ -1073,7 +1180,7 @@ public final class ConnectionManager {
 		private long ping;
 		private Inet4Address ip;
 		private Socket s;
-		private long lastUsed;
+		private long lastUsed, lastPinged;
 
 		@SuppressWarnings("unused")
 		public Node(Inet4Address ip) throws UnknownHostException, IOException {
@@ -1096,6 +1203,7 @@ public final class ConnectionManager {
 			s = new Socket(ip.getHostAddress(), port);
 			this.ping = ping;
 			lastUsed = System.currentTimeMillis();
+			lastPinged = System.currentTimeMillis();
 		}
 
 		@SuppressWarnings("unused")
@@ -1115,6 +1223,7 @@ public final class ConnectionManager {
 
 		public long updatePing() throws IOException {
 			ping = ping(ip);
+			lastPinged = System.currentTimeMillis();
 			return ping;
 		}
 
@@ -1156,6 +1265,31 @@ public final class ConnectionManager {
 		@SuppressWarnings("unused")
 		public Inet4Address getIPv4() {
 			return ip;
+		}
+
+	}
+
+	public class NodeInfo {
+		private Node n;
+
+		public NodeInfo(Node n) {
+			this.n = n;
+		}
+
+		public String getIp() {
+			return n.ip.toString();
+		}
+
+		public long lastUsed() {
+			return n.lastUsed;
+		}
+
+		public long ping() {
+			return n.ping;
+		}
+
+		public long lastPinged() {
+			return n.lastPinged;
 		}
 	}
 }

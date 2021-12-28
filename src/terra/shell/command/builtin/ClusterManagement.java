@@ -7,6 +7,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import terra.shell.command.BasicCommand;
+import terra.shell.emulation.concurrency.math.cluster.ConnectionManager.NodeInfo;
 import terra.shell.launch.Launch;
 import terra.shell.utils.JProcess;
 import terra.shell.utils.perms.Permissions;
@@ -26,7 +27,7 @@ public class ClusterManagement extends BasicCommand {
 	@Override
 	public String getVersion() {
 		// TODO Auto-generated method stub
-		return "0.0.1";
+		return "1.2";
 	}
 
 	@Override
@@ -107,6 +108,16 @@ public class ClusterManagement extends BasicCommand {
 				getLogger().log(proc.getName() + " : " + proc.getOrigin().toString());
 			}
 			getLogger().log(procs.length + " active processes");
+		} else if (hasArgument("listNodes")) {
+			NodeInfo[] nodes = Launch.getConnectionMan().nodes();
+			for (NodeInfo ni : nodes) {
+				getLogger().log(ni.getIp() + " | " + ni.lastUsed() + " | " + ni.lastPinged() + " | " + ni.ping());
+			}
+		} else {
+			getLogger().log("Help:");
+			getLogger().log("Version: " + getVersion());
+			getLogger().endln();
+			getLogger().log("clusterman <add|remove|checkLoad|listProcesses|listNodes>");
 		}
 		return true;
 	}

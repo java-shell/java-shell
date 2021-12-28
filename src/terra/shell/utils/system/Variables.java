@@ -18,8 +18,7 @@ public final class Variables {
 	 * Sets the Variable. This replaces any variable previously with the same
 	 * Variable.getName(); value.
 	 * 
-	 * @param var
-	 *            Variable to be set.
+	 * @param var Variable to be set.
 	 */
 	public static void setVar(Variable var) {
 		varByName.put(var.getVarName(), var);
@@ -38,12 +37,10 @@ public final class Variables {
 	}
 
 	/**
-	 * Clears the Variable defined with this String. The String needs to match
-	 * the variables Variable.getName(); value as this is what defines the
-	 * variable.
+	 * Clears the Variable defined with this String. The String needs to match the
+	 * variables Variable.getName(); value as this is what defines the variable.
 	 * 
-	 * @param var
-	 *            Matching Variable to clear.
+	 * @param var Matching Variable to clear.
 	 */
 	public static void clearVar(String var) {
 		if (varByName.containsKey(var)) {
@@ -64,8 +61,7 @@ public final class Variables {
 	/**
 	 * Get the value specified by that Variable.
 	 * 
-	 * @param var
-	 *            The Variable name to access.
+	 * @param var The Variable name to access.
 	 * @return The Variables actual value.
 	 */
 	public static String getVarValue(String var) {
@@ -73,5 +69,9 @@ public final class Variables {
 			return varByName.get(var).getVarValue();
 
 		return null;
+	}
+
+	public static Variable getVar(String var) {
+		return varByName.get(var);
 	}
 }
