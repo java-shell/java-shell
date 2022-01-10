@@ -52,7 +52,8 @@ public final class Terminal extends InteractiveObject {
 	}
 
 	/**
-	 * Attempt to kill terminal, will not always work as it essentially alerts the Terminal to stop, not actually killing it.
+	 * Attempt to kill terminal, will not always work as it essentially alerts the
+	 * Terminal to stop, not actually killing it.
 	 */
 	@Override
 	public void halt() {
@@ -222,6 +223,7 @@ public final class Terminal extends InteractiveObject {
 	public boolean runCmd(String cmd, String... args) {
 		if (Launch.cmds.containsKey(cmd)) {
 			Command c = Launch.cmds.get(cmd);
+			c.setOutputStream(getGOutputStream());
 			c.addArgs(args, this);
 			return c.run();
 		}

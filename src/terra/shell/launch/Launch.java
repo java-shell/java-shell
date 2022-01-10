@@ -44,7 +44,6 @@ import terra.shell.config.Configuration;
 import terra.shell.emulation.concurrency.math.cluster.ConnectionManager;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
-import terra.shell.modules.ModuleEvent;
 import terra.shell.modules.ModuleManagement;
 import terra.shell.utils.keys.DummyListener;
 import terra.shell.utils.keys.DummyType;
@@ -59,6 +58,7 @@ import terra.shell.utils.system.EventManager;
 import terra.shell.utils.system.GeneralVariable;
 import terra.shell.utils.system.JSHClassLoader;
 import terra.shell.utils.system.Variables;
+import terra.shell.utils.system.user.UserManagement.UserValidation;
 
 /**
  * Launches JSH, Launch Initialization is completed in Stages, and at each
@@ -651,7 +651,28 @@ public class Launch {
 	}
 
 	/**
+	 * Register a command if one is not already registered under that alias
+	 * @param cmd String used to call command
+	 * @param c Command to be executed
+	 * @return True if the command is properly registered, False if the command has been previously registered
+	 */
+	public static boolean registerCommand(String cmd, Command c) {
+		if (cmds.containsKey(cmd)) {
+			return false;
+		}
+		cmds.put(cmd, c);
+		log.debug("Registered command " + cmd);
+		return true;
+	}
+
+	// TODO Allow cmd replacement via User account lock
+	public static boolean registerCommand(String cmd, Command c, UserValidation token) {
+		return false;
+	}
+
+	/**
 	 * Initialization Event wrapper
+	 * 
 	 * @author schirripad@moravian.edu
 	 *
 	 */
@@ -676,6 +697,7 @@ public class Launch {
 
 	/**
 	 * Initialization Stages
+	 * 
 	 * @author schirripad@moravian.edu
 	 *
 	 */

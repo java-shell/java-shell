@@ -31,7 +31,7 @@ public final class ModuleManagement {
 	static Hashtable<String, Module> modules = new Hashtable<String, Module>();
 	static Hashtable<Module, Thread> mThreads = new Hashtable<Module, Thread>();
 	private static Logger log = LogManager.getLogger("MM");
-	private ByteClassLoader bcl = Launch.getClassLoader();
+	private ByteClassLoader bcl = null;
 	static boolean isStarted;
 
 	public String getName() {
@@ -61,6 +61,8 @@ public final class ModuleManagement {
 					while (sc.hasNext()) {
 						Thread.sleep(10);
 						s = sc.nextLine();
+						if (s.startsWith("#"))
+							continue;
 						final File f = new File(prefix, "/modules/" + s + "/module.class");
 						final File dir = new File(prefix, "/modules/" + s + "/");
 						File reslist = new File(prefix, "/modules/" + s + "/res.list");
@@ -90,7 +92,8 @@ public final class ModuleManagement {
 								}
 							}
 							bcl = new ByteClassLoader(
-									new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
+									new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") },
+									Launch.getClassLoader());
 							if (jarRes.size() != 0) {
 								URL[] urls = new URL[jarRes.size() + 1];
 								urls[0] = new URL("file://" + prefix.getAbsolutePath() + "/modules/");
@@ -142,6 +145,9 @@ public final class ModuleManagement {
 						}
 						if (f.exists()) {
 							try {
+								if (bcl == null)
+									bcl = new ByteClassLoader(
+											new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
 								final Class<?> classtmp = bcl.loadClass(s + ".module");
 								final Module mod = (Module) classtmp.newInstance();
 								modules.put(mod.getName(), mod);

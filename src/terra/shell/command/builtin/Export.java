@@ -65,6 +65,10 @@ public class Export extends Command {
 					return false;
 				}
 			}
+			if (args[0].equals("help")) {
+				getLogger().log("Syntax: export <set,help> (key) (value)");
+				return true;
+			}
 			getLogger().log("Invalid Arguments!");
 			return false;
 		}

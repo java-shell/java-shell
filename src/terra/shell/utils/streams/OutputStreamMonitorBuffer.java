@@ -20,6 +20,9 @@ public class OutputStreamMonitorBuffer extends OutputStream {
 	}
 
 	public int read() {
+		while (dat.size() == 0)
+			;
+
 		if (dat.size() < t) {
 			return dat.get(dat.size() - 1);
 		}
