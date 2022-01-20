@@ -190,6 +190,16 @@ public class Configuration {
 	}
 
 	/**
+	 * Removes a key from a configuration entirely
+	 * 
+	 * @param id Key to be removed
+	 */
+	public void removeKey(String id) {
+		vlist.remove(id);
+		_write();
+	}
+
+	/**
 	 * Save the configuration values back to the local file
 	 */
 	protected void _write() {
