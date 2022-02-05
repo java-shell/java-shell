@@ -12,7 +12,6 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
-import java.security.Signature;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.KeySpec;
 import java.security.spec.X509EncodedKeySpec;
@@ -28,11 +27,16 @@ import terra.shell.utils.system.Variable;
 public final class Encrypted extends Variable.Type {
 
 	private String salt, encodedKey, encodedObject, objKey, serializedObj;
+	private boolean keyRetrieved = false;
 
-	public Encrypted(Object decrypted, String key) throws Exception {
+	public Encrypted(Object decrypted) throws Exception {
 		byte[] salt = new byte[64];
 		SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
 		sr.nextBytes(salt);
+
+		byte[] keyBytes = new byte[25];
+		sr.nextBytes(keyBytes);
+		String key = Base64.getEncoder().encodeToString(keyBytes);
 
 		KeySpec keySpec = new PBEKeySpec(key.toCharArray(), salt, 20000, 160);
 		SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
@@ -45,7 +49,6 @@ public final class Encrypted extends Variable.Type {
 	private byte[] encryptObject(Object o) throws NoSuchAlgorithmException, IOException, Exception {
 		InputStream cIn = o.getClass().getClassLoader().getResourceAsStream(o.getClass().getName());
 		byte[] bytes = cIn.readAllBytes();
-		Signature sign = Signature.getInstance("SHA256withRSA");
 		KeyPairGenerator keyPair = KeyPairGenerator.getInstance("RSA");
 		keyPair.initialize(2048);
 		KeyPair pair = keyPair.generateKeyPair();
@@ -71,7 +74,9 @@ public final class Encrypted extends Variable.Type {
 		return objBytes;
 	}
 
-	public Object getDecryptedObject(String key, String priv) throws Exception {
+	public Object getDecryptedObject(LockedVariableKey lockKey) throws Exception {
+		String key = lockKey.key1;
+		String priv = lockKey.key2;
 		KeySpec keySpec = new PBEKeySpec(key.toCharArray(), Base64.getDecoder().decode(salt), 2000, 160);
 		SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
 		if (encodedKey == (Base64.getEncoder().encodeToString(keyFactory.generateSecret(keySpec).getEncoded()))) {
@@ -92,9 +97,25 @@ public final class Encrypted extends Variable.Type {
 		return null;
 	}
 
+	public LockedVariableKey getKey() throws IllegalAccessException {
+		if (!keyRetrieved)
+			throw new IllegalAccessException("Attempted to retrieve key twice");
+		keyRetrieved = true;
+		return new LockedVariableKey(encodedKey, objKey);
+	}
+
 	@Override
 	public String getTypeName() {
 		return "__ENCRYPTED__";
+	}
+
+	public final class LockedVariableKey {
+		private final String key1, key2;
+
+		public LockedVariableKey(String key1, String key2) {
+			this.key1 = key1;
+			this.key2 = key2;
+		}
 	}
 
 }

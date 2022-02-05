@@ -477,7 +477,7 @@ public class Launch {
 					Command cmd = null;
 					try {
 						cmd = (Command) classtmp.newInstance();
-						cmds.put(cmd.getName(), cmd);
+						registerCommand(cmd.getName(), cmd);
 						log.log("Command loaded: " + cmd.getName());
 						final ArrayList<String> al = cmd.getAliases();
 						if (al != null) {
@@ -549,7 +549,7 @@ public class Launch {
 			// Instantiate command, add to Command list
 			try {
 				Command c = (Command) loader.getClass(file).newInstance();
-				cmds.put(c.getName(), c);
+				registerCommand(c.getName(), c);
 				log.log("Command Loaded: " + c.getName());
 				// Catch exceptions, and continue to next iteration
 			} catch (IllegalAccessException e) {
@@ -652,9 +652,11 @@ public class Launch {
 
 	/**
 	 * Register a command if one is not already registered under that alias
+	 * 
 	 * @param cmd String used to call command
-	 * @param c Command to be executed
-	 * @return True if the command is properly registered, False if the command has been previously registered
+	 * @param c   Command to be executed
+	 * @return True if the command is properly registered, False if the command has
+	 *         been previously registered
 	 */
 	public static boolean registerCommand(String cmd, Command c) {
 		if (cmds.containsKey(cmd)) {
@@ -667,7 +669,8 @@ public class Launch {
 
 	// TODO Allow cmd replacement via User account lock
 	public static boolean registerCommand(String cmd, Command c, UserValidation token) {
-		return false;
+		cmds.put(cmd, c);
+		return true;
 	}
 
 	/**

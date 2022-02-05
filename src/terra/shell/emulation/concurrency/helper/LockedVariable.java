@@ -2,14 +2,19 @@ package terra.shell.emulation.concurrency.helper;
 
 import terra.shell.utils.system.Variable;
 import terra.shell.utils.system.types.Encrypted;
+import terra.shell.utils.system.types.Encrypted.LockedVariableKey;
 
 public class LockedVariable implements Variable {
 	private Encrypted enc;
 	private String varName;
 
-	public LockedVariable(String varName, Object decryptedObject, String key) throws Exception {
-		enc = new Encrypted(decryptedObject, key);
+	public LockedVariable(String varName, Object decryptedObject) throws Exception {
+		enc = new Encrypted(decryptedObject);
 		this.varName = varName;
+	}
+
+	public LockedVariableKey getKey() throws IllegalAccessException {
+		return enc.getKey();
 	}
 
 	@Override
@@ -24,7 +29,7 @@ public class LockedVariable implements Variable {
 
 	@Override
 	public String getVarValue() {
-		return null;
+		return "__ENCRYPTED__";
 	}
 
 }
