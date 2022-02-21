@@ -47,14 +47,56 @@ public final class Encrypted extends Variable.Type {
 	}
 
 	private byte[] encryptObject(Object o) throws NoSuchAlgorithmException, IOException, Exception {
-		InputStream cIn = o.getClass().getClassLoader().getResourceAsStream(o.getClass().getName());
+		InputStream cIn;
+		try {
+			cIn = o.getClass().getClassLoader()
+					.getResourceAsStream(o.getClass().getName().replaceAll("\\.", "/") + ".class");
+		} catch (Exception e) {
+			cIn = ClassLoader.getSystemClassLoader()
+					.getResourceAsStream(o.getClass().getName().replaceAll("\\.", "/") + ".class");
+		}
 		byte[] bytes = cIn.readAllBytes();
 		KeyPairGenerator keyPair = KeyPairGenerator.getInstance("RSA");
 		keyPair.initialize(2048);
 		KeyPair pair = keyPair.generateKeyPair();
 		Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 		cipher.init(Cipher.ENCRYPT_MODE, pair.getPublic());
-		cipher.update(bytes);
+
+		byte[] buf = new byte[100];
+		byte[] itr = new byte[0];
+		byte[] fin = new byte[0];
+		for (int i = 0; i < bytes.length; i++) {
+			if ((i > 0) && (i % 100 == 0)) {
+				itr = cipher.doFinal(buf);
+				byte[] combiner = new byte[itr.length + fin.length];
+				for (int j = 0; j < fin.length; j++) {
+					combiner[j] = fin[j];
+				}
+				for (int j = 0; j < itr.length; j++) {
+					combiner[fin.length + j] = itr[j];
+				}
+				fin = combiner;
+				combiner = null;
+				if (i + 100 > bytes.length)
+					buf = new byte[bytes.length - i];
+				else
+					buf = new byte[100];
+			}
+			buf[i % 100] = bytes[i];
+		}
+
+		itr = cipher.doFinal(buf);
+		byte[] combiner = new byte[itr.length + fin.length];
+		for (int j = 0; j < fin.length; j++) {
+			combiner[j] = fin[j];
+		}
+		for (int j = 0; j < itr.length; j++) {
+			combiner[fin.length + j] = itr[j];
+		}
+		fin = combiner;
+		combiner = null;
+
+		byte[] objBytes = fin;
 
 		ByteArrayOutputStream bout = new ByteArrayOutputStream();
 		ObjectOutputStream objOut = new ObjectOutputStream(bout);
@@ -63,10 +105,44 @@ public final class Encrypted extends Variable.Type {
 		objOut.close();
 		objOut = null;
 
-		byte[] objBytes = cipher.doFinal();
+		bytes = bout.toByteArray();
+
+		buf = new byte[100];
+		itr = new byte[0];
+		fin = new byte[0];
+		for (int i = 0; i < bytes.length; i++) {
+			if ((i > 0) && (i % 100 == 0)) {
+				itr = cipher.doFinal(buf);
+				combiner = new byte[itr.length + fin.length];
+				for (int j = 0; j < fin.length; j++) {
+					combiner[j] = fin[j];
+				}
+				for (int j = 0; j < itr.length; j++) {
+					combiner[fin.length + j] = itr[j];
+				}
+				fin = combiner;
+				combiner = null;
+				if (i + 100 > bytes.length)
+					buf = new byte[bytes.length - i];
+				else
+					buf = new byte[100];
+			}
+			buf[i % 100] = bytes[i];
+		}
+
+		itr = cipher.doFinal(buf);
+		combiner = new byte[itr.length + fin.length];
+		for (int j = 0; j < fin.length; j++) {
+			combiner[j] = fin[j];
+		}
+		for (int j = 0; j < itr.length; j++) {
+			combiner[fin.length + j] = itr[j];
+		}
+		fin = combiner;
+		combiner = null;
 
 		cipher.init(Cipher.ENCRYPT_MODE, pair.getPublic());
-		byte[] serializedBytes = cipher.doFinal(bout.toByteArray());
+		byte[] serializedBytes = fin;
 		this.serializedObj = Base64.getEncoder().encodeToString(serializedBytes);
 
 		objKey = Base64.getEncoder().encodeToString(pair.getPrivate().getEncoded());
@@ -74,6 +150,7 @@ public final class Encrypted extends Variable.Type {
 		return objBytes;
 	}
 
+	//TODO Add block based decryption, similar to how the encryption method functions
 	public Object getDecryptedObject(LockedVariableKey lockKey) throws Exception {
 		String key = lockKey.key1;
 		String priv = lockKey.key2;
