@@ -268,7 +268,7 @@ public final class ConnectionManager {
 		// Check for valid IP
 		if (ip == null)
 			return -1;
-		log.debug("Sending PING request", 2);
+		log.debug("Sending PING request: " + ip, 2);
 		Socket s = new Socket();
 		// Connect to Node host
 		s.connect(new InetSocketAddress(ip, port), handshakeTimeout);
@@ -1277,7 +1277,7 @@ public final class ConnectionManager {
 		}
 
 		public String getIp() {
-			return n.ip.toString();
+			return n.ip.getHostAddress();
 		}
 
 		public long lastUsed() {
