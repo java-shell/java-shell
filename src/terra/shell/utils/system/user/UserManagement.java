@@ -1,6 +1,7 @@
 package terra.shell.utils.system.user;
 
 import java.io.File;
+import java.io.Serializable;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -69,6 +70,22 @@ public final class UserManagement {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+		return false;
+	}
+
+	public static boolean removeUser(String userName, User local, UserValidation token) {
+		if (checkUserValidation(local, token)) {
+			try {
+				User u = registeredUser.get(userName);
+				userCredentials.remove(u);
+				registeredUser.remove(u);
+				currentValidationTokens.remove(u);
+				return true;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+		}
 		return false;
 	}
 
@@ -144,7 +161,7 @@ public final class UserManagement {
 		}
 	}
 
-	public static final class UserValidation {
+	public static final class UserValidation implements Serializable {
 		private byte[] salt;
 		private String randKey;
 		private final String encPass;

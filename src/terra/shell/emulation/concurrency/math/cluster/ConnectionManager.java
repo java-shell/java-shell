@@ -65,10 +65,6 @@ public final class ConnectionManager {
 	 */
 
 	private JSHClassLoader loader;
-	// TODO Categorize Classloaders by UUID in order to allow deloading of classes
-	// by removing the classloader (Possibly serialVersionUID??
-	// TODO Need to reserve UUID slot when passive load call is received, should set
-	// UUID upon request, not instantiation
 	private Hashtable<Long, JSHClassLoader> loadersByUUID = new Hashtable<Long, JSHClassLoader>();
 	private HashSet<String> localAddresses = new HashSet<String>();
 
@@ -83,7 +79,6 @@ public final class ConnectionManager {
 	// TODO
 	// Finish setting up defaults
 	// Finish LocalServer clientHandler
-	// Create service scan *
 	/**
 	 * Configure ConnectionManager, INIT LocalServer, run serviceScan
 	 */
