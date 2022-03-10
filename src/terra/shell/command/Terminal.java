@@ -14,10 +14,11 @@ import javax.swing.Timer;
 import terra.shell.launch.Launch;
 import terra.shell.launch.Login;
 import terra.shell.logging.LogManager;
-import terra.shell.logging.Logger;
 import terra.shell.utils.InteractiveObject;
 import terra.shell.utils.streams.InputStreamBuffer;
 import terra.shell.utils.streams.OutputStreamMonitorBuffer;
+import terra.shell.utils.system.user.InvalidUserException;
+import terra.shell.utils.system.user.User;
 
 /**
  * CLI Interface for the JSH
@@ -35,6 +36,7 @@ public final class Terminal extends InteractiveObject {
 	private boolean always = true;
 	private boolean kill = false;
 	private boolean respawn;
+	private User user = null;
 
 	/**
 	 * Create a new terminal with default settings
@@ -77,7 +79,12 @@ public final class Terminal extends InteractiveObject {
 		Login l = new Login(this);
 		l.setOutputStream(gOut);
 		l.redirectIn(gIn);
-		l.run();
+		try {
+			user = l.login();
+		} catch (InvalidUserException e) {
+			getLogger().err("User Authentication Failure");
+			return false;
+		}
 		sc = new Scanner(gIn);
 		String in;
 		getLogger().print(currentDir.getName() + ">");
@@ -221,6 +228,10 @@ public final class Terminal extends InteractiveObject {
 	 * @return True if the command is run successfully, false otherwise
 	 */
 	public boolean runCmd(String cmd, String... args) {
+		if (user == null) {
+			getLogger().err("User is null, unable to run command");
+			return false;
+		}
 		if (Launch.cmds.containsKey(cmd)) {
 			Command c = Launch.cmds.get(cmd);
 			c.setOutputStream(getGOutputStream());

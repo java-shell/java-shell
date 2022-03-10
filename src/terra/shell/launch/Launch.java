@@ -58,6 +58,7 @@ import terra.shell.utils.system.EventManager;
 import terra.shell.utils.system.GeneralVariable;
 import terra.shell.utils.system.JSHClassLoader;
 import terra.shell.utils.system.Variables;
+import terra.shell.utils.system.user.UserManagement;
 import terra.shell.utils.system.user.UserManagement.UserValidation;
 
 /**
@@ -216,6 +217,8 @@ public class Launch {
 		} catch (NullPointerException e) {
 			e.printStackTrace();
 		}
+
+		UserManagement.init();
 
 		// Register event types
 		EventManager.registerEvType("Dummy");

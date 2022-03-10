@@ -1,16 +1,14 @@
 package terra.shell.launch;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.PrintStream;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.Scanner;
 
 import terra.shell.command.Command;
 import terra.shell.command.Terminal;
 import terra.shell.config.Configuration;
 import terra.shell.utils.perms.Permissions;
+import terra.shell.utils.system.user.InvalidUserException;
 import terra.shell.utils.system.user.User;
 import terra.shell.utils.system.user.UserManagement;
 
@@ -74,6 +72,13 @@ public class Login extends Command {
 	public void halt() {
 		// getLogger().log("You can't halt a Login!");
 		return;
+	}
+
+	public User login() throws InvalidUserException {
+		start();
+		if (user == null)
+			throw new InvalidUserException();
+		return user;
 	}
 
 	private boolean run;
@@ -140,6 +145,8 @@ public class Login extends Command {
 
 		});
 		mask.setPriority(Thread.MAX_PRIORITY);
+		print = false;
+		mask.start();
 
 		// Check if this is the first login, if it is, then run user setup
 		if (fst) {
@@ -153,13 +160,35 @@ public class Login extends Command {
 					continue;
 				}
 				getLogger().log("Please enter a desired password: ");
-				mask.start();
-				String password = sc.nextLine();
-				mask.stop();
-				// TODO need to replace null's with proper values
-				UserManagement.createNewUser(username, password, null, null);
+				print = true;
+				String password = sc.next();
+				getLogger().endln();
+				sc.nextLine();
+				print = false;
+				if (UserManagement.createNewUser(username, password, null, null)) {
+					getLogger().clear();
+					getLogger().log("Fist Time User Setup Complete");
+					break;
+				}
 			}
 		}
+		while (true) {
+			getLogger().print("Username: ");
+			String user = sc.nextLine();
+			getLogger().print("Password: ");
+			print = true;
+			String pass = sc.next();
+			getLogger().endln();
+			sc.nextLine();
+			print = false;
+			try {
+				this.user = UserManagement.logIn(user, pass);
+				break;
+			} catch (InvalidUserException e) {
+				return false;
+			}
+		}
+		mask.stop();
 		return true;
 	}
 }
