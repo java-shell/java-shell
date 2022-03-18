@@ -14,31 +14,31 @@ public class ReloadCommands extends Command {
 
 	@Override
 	public String getName() {
-		// TODO Auto-generated method stub
+		 
 		return "rlcmds";
 	}
 
 	@Override
 	public String getVersion() {
-		// TODO Auto-generated method stub
+		 
 		return "0.1";
 	}
 
 	@Override
 	public String getAuthor() {
-		// TODO Auto-generated method stub
+		 
 		return "DS";
 	}
 
 	@Override
 	public String getOrg() {
-		// TODO Auto-generated method stub
+		 
 		return "T3RRA";
 	}
 
 	@Override
 	public ArrayList<Permissions> getPerms() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
@@ -51,13 +51,13 @@ public class ReloadCommands extends Command {
 
 	@Override
 	public ArrayList<String> getAliases() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
 	@Override
 	public boolean isBlocking() {
-		// TODO Auto-generated method stub
+		 
 		return true;
 	}
 

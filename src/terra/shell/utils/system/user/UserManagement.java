@@ -86,6 +86,11 @@ public final class UserManagement {
 		return null;
 	}
 
+	// TODO implement actual permission checking
+	public static boolean checkUserPermissionAccess(String permission, User u) {
+		return true;
+	}
+
 	private synchronized static boolean saveUser(User u, Password pass) {
 		try {
 

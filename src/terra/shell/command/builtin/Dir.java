@@ -16,31 +16,31 @@ public class Dir extends Command {
 
 	@Override
 	public String getName() {
-		// TODO Auto-generated method stub
+		 
 		return "dir";
 	}
 
 	@Override
 	public String getVersion() {
-		// TODO Auto-generated method stub
+		 
 		return "0.4";
 	}
 
 	@Override
 	public String getAuthor() {
-		// TODO Auto-generated method stub
+		 
 		return "DS";
 	}
 
 	@Override
 	public String getOrg() {
-		// TODO Auto-generated method stub
+		 
 		return "T3RRA";
 	}
 
 	@Override
 	public ArrayList<Permissions> getPerms() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
@@ -191,7 +191,7 @@ public class Dir extends Command {
 
 	@Override
 	public boolean isBlocking() {
-		// TODO Auto-generated method stub
+		 
 		return true;
 	}
 
