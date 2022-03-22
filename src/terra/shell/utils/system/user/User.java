@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import terra.shell.utils.perms.PermissionToken;
+import terra.shell.utils.system.user.UserManagement.UserValidation;
 
 public class User implements Serializable {
 
@@ -17,16 +18,23 @@ public class User implements Serializable {
 		this.id = id;
 	}
 
-	public String getUserName() {
+	public final String getUserName() {
 		return userName;
 	}
 
-	public boolean hasPermission(PermissionToken token) {
+	public final boolean hasPermission(PermissionToken token) {
 
 		return false;
 	}
 
-	public int getUserID() {
+	public final void givePermission(PermissionToken token, User u, UserValidation validation) throws InvalidUserException {
+		if (UserManagement.checkUserValidation(u, validation)) {
+			
+		}
+		throw new InvalidUserException();
+	}
+
+	public final int getUserID() {
 		return id;
 	}
 
