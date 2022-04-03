@@ -14,6 +14,10 @@ import java.util.UUID;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 import terra.shell.utils.system.JSHProcesses;
+import terra.shell.utils.system.user.InvalidUserException;
+import terra.shell.utils.system.user.User;
+import terra.shell.utils.system.user.UserManagement;
+import terra.shell.utils.system.user.UserManagement.UserValidation;
 
 /**
  * JProcess is a resource class which implements a Thread as its "heart". The
@@ -43,9 +47,24 @@ public abstract class JProcess implements Serializable {
 	private transient String name = null;
 	private boolean canBeSerialized = false;
 	private Inet4Address origin;
+	private User user = null;
 
 	public JProcess() {
+		try {
+			//user = (User) Thread.currentThread().retrieveWrappedObject();
+		} catch (Exception e) {
+			user = null;
+		}
 		u = JSHProcesses.getValidUUID();
+		init();
+	}
+
+	public JProcess(User u, UserValidation uv) throws InvalidUserException {
+		if (!UserManagement.checkUserValidation(u, uv)) {
+			throw new InvalidUserException();
+		}
+		user = u;
+		this.u = JSHProcesses.getValidUUID();
 		init();
 	}
 

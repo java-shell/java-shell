@@ -6,41 +6,46 @@ import java.security.Permission;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import terra.shell.logging.LogManager;
 import terra.shell.utils.system.user.InvalidUserException;
 import terra.shell.utils.system.user.User;
 import terra.shell.utils.system.user.UserManagement;
 import terra.shell.utils.system.user.UserManagement.UserValidation;
 
 @SuppressWarnings({ "deprecation", "removal" })
-public class PermissionManager extends JavaShellSecurityManager<PermissionToken, User, UserValidation> {
+public class PermissionManager extends SecurityManager {
 	private HashMap<User, HashSet<PermissionToken>> permissionTokens = new HashMap<User, HashSet<PermissionToken>>();
 	private HashMap<String, PermissionToken> registeredPermissions = new HashMap<String, PermissionToken>();
 
-	@Override
-	public synchronized void checkUserPermission(PermissionToken perm, User u, UserValidation validation)
+	public PermissionManager() {
+		LogManager.write("PermissionManager active ----------------------------------");
+	}
+
+	public synchronized void checkUserPermission(PermissionToken perm, User u, User local, UserValidation validation)
 			throws Exception {
 		if (UserManagement.checkUserValidation(u, validation)) {
 		} else
 			throw new InvalidUserException();
-		// TODO Change null
-		UserManagement.checkUserPermissionAccess(perm.getPermissionValue(), u);
-
+		UserManagement.checkUserPermissionAccess(perm.getPermissionValue(), u, local, validation);
 	}
 
-	public synchronized void registerPermissionToken(PermissionToken token) {
+	public synchronized void registerPermissionToken(PermissionToken token, User u, UserValidation validation)
+			throws InvalidUserException {
+		if (!UserManagement.checkUserValidation(u, validation))
+			throw new InvalidUserException();
 		if (registeredPermissions.containsKey(token.getPermissionValue())) {
 			return;
 		}
 		registeredPermissions.put(token.getPermissionValue(), token);
 	}
 
-	public synchronized PermissionToken assignPermissionToken(User u, UserValidation validation, PermissionToken perm)
-			throws InvalidUserException {
-		if (u == null || validation == null || perm == null) {
+	public synchronized PermissionToken assignPermissionToken(User u, User local, UserValidation validation,
+			PermissionToken perm) throws InvalidUserException {
+		if (u == null || local == null || validation == null || perm == null) {
 			return null;
 		}
 		if (UserManagement.checkUserValidation(u, validation)) {
-			if (!UserManagement.checkUserPermissionAccess(perm.getPermissionValue(), u))
+			if (!UserManagement.checkUserPermissionAccess(perm.getPermissionValue(), u, local, validation))
 				throw new SecurityException(
 						"User " + u.getUserName() + " does not have access to permission " + perm.getPermissionValue());
 			if (!permissionTokens.containsKey(u)) {
@@ -50,6 +55,13 @@ public class PermissionManager extends JavaShellSecurityManager<PermissionToken,
 		} else
 			throw new InvalidUserException();
 		return perm;
+	}
+
+	// TODO Need to figure out how to isolate an object within a Thread, and utilize
+	// that to give thread-based permissions
+	private void checkThreadWrapping() {
+		Thread t = Thread.currentThread();
+		// t.retrieveWrappedObject();
 	}
 
 	@Override
@@ -231,5 +243,5 @@ public class PermissionManager extends JavaShellSecurityManager<PermissionToken,
 		// TODO Auto-generated method stub
 		return super.getThreadGroup();
 	}
-	
+
 }

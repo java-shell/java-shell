@@ -10,7 +10,7 @@ import terra.shell.utils.system.user.UserManagement.UserValidation;
 public class User implements Serializable {
 
 	private int id;
-	private List<PermissionToken> perms = new LinkedList<PermissionToken>();
+	private List<String> perms = new LinkedList<String>();
 	private String userName, userHash;
 
 	public User(String userName, int id) {
@@ -22,14 +22,16 @@ public class User implements Serializable {
 		return userName;
 	}
 
-	public final boolean hasPermission(PermissionToken token) {
-
+	public final boolean hasPermission(String token) {
+		if (perms.contains(token))
+			return true;
 		return false;
 	}
 
-	public final void givePermission(PermissionToken token, User u, UserValidation validation) throws InvalidUserException {
+	public final void givePermission(PermissionToken token, User u, UserValidation validation)
+			throws InvalidUserException {
 		if (UserManagement.checkUserValidation(u, validation)) {
-			
+			perms.add(token.getPermissionValue());
 		}
 		throw new InvalidUserException();
 	}

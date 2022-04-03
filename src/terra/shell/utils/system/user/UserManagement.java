@@ -87,8 +87,14 @@ public final class UserManagement {
 	}
 
 	// TODO implement actual permission checking
-	public static boolean checkUserPermissionAccess(String permission, User u) {
-		return true;
+	public static boolean checkUserPermissionAccess(String permission, User u, User local, UserValidation valid) throws InvalidUserException{
+		if(checkUserValidation(local, valid)) {
+			if(u.hasPermission(permission)) {
+				return true;
+			}
+		} else 
+			throw new InvalidUserException();
+		return false;
 	}
 
 	private synchronized static boolean saveUser(User u, Password pass) {
