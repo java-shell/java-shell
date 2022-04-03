@@ -13,6 +13,7 @@ import java.util.UUID;
 
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
+import terra.shell.utils.perms.PermittedThread;
 import terra.shell.utils.system.JSHProcesses;
 import terra.shell.utils.system.user.InvalidUserException;
 import terra.shell.utils.system.user.User;
@@ -35,7 +36,7 @@ public abstract class JProcess implements Serializable {
 
 	private static final long serialVersionUID = -4944113269698016157L;
 	private transient boolean stop, isGoing = true, suspend, firstInit = true;
-	private transient Thread t = null;
+	private transient PermittedThread t = null;
 	protected UUID u;
 	private transient UUID sUID;
 	private transient boolean uuidset;
@@ -51,7 +52,10 @@ public abstract class JProcess implements Serializable {
 
 	public JProcess() {
 		try {
-			//user = (User) Thread.currentThread().retrieveWrappedObject();
+			Thread curThread = Thread.currentThread();
+			if (curThread instanceof PermittedThread) {
+				user = ((PermittedThread) curThread).retrieveUser();
+			}
 		} catch (Exception e) {
 			user = null;
 		}
@@ -199,7 +203,7 @@ public abstract class JProcess implements Serializable {
 		stop = false;
 		isGoing = true;
 		// Create a new thread in which to run this process
-		t = new Thread(new Runnable() {
+		t = new PermittedThread(new Runnable() {
 			public void run() {
 				// Add the process to the process manager (JSHProcesses)
 				JSHProcesses.addProcess(me);
@@ -220,7 +224,7 @@ public abstract class JProcess implements Serializable {
 
 				return;
 			}
-		});
+		}, user);
 		t.setName(getName());
 		try {
 			// Run the thread which contains the task to be executed
@@ -286,7 +290,7 @@ public abstract class JProcess implements Serializable {
 		if (!holdup) {
 			s = null;
 		}
-		t = new Thread(new Runnable() {
+		t = new PermittedThread(new Runnable() {
 			public void run() {
 				JSHProcesses.addProcess(me);
 				try {
@@ -321,7 +325,7 @@ public abstract class JProcess implements Serializable {
 
 				return;
 			}
-		});
+		}, user);
 		t.setName(getName());
 		try {
 			t.start();

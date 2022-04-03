@@ -134,7 +134,7 @@ public final class ConnectionManager {
 			log.log("Stopping Connection Manager...");
 			return;
 		}
-		ls.start();
+		ls.run();
 
 		// Scan for other servers on the LAN
 		try {
