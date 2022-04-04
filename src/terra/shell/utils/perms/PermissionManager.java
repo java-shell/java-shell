@@ -59,8 +59,13 @@ public class PermissionManager extends SecurityManager {
 
 	// TODO Need to figure out how to isolate an object within a Thread, and utilize
 	// that to give thread-based permissions
+	// UPDATE: Utilize PermittedThread to check thread for User access
 	private void checkThreadWrapping() {
 		Thread t = Thread.currentThread();
+		if (t instanceof PermittedThread) {
+			User u = ((PermittedThread) t).retrieveUser();
+			// TODO Check against permissions
+		}
 		// t.retrieveWrappedObject();
 	}
 
