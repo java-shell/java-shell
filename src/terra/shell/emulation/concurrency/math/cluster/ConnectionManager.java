@@ -379,7 +379,7 @@ public final class ConnectionManager {
 	 * @throws IOException
 	 */
 	private void unicastServiceScan() throws IOException {
-		log.log("Starting unicast scan on range " + ipFormat.replaceAll("X", "1-253"));
+		log.log("Starting unicast scan on range " + ipFormat.replaceAll("X", ipScanRangeMin + "-" + ipScanRangeMax));
 		String ip = ipFormat;
 		// Scan all IP's from range 1-253
 		InetSocketAddress rollingAdd;

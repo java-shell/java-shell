@@ -15,7 +15,7 @@ import terra.shell.logging.Logger;
 import terra.shell.utils.system.Variables;
 
 public class Configuration {
-	private int type = 3; // 0 - File; 1 - InputStream; 2 - URL; 3 - No Physical
+	private int type = 3; // 0 - File; 1 - InputStream; 2 - URL; 3 - Not Physical
 	protected File f;
 	protected InputStream in;
 	protected URL u;
