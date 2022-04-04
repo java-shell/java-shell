@@ -111,7 +111,6 @@ public final class ConnectionManager {
 			// If conf exists, gather configuration options
 			port = conf.getValueAsInt("port");
 			ipFormat = (String) conf.getValue("ipformat");
-			ipFormat.substring(0, ipFormat.length() - 2);
 			activeProcessLimit = conf.getValueAsInt("activeProcessLimit");
 			passiveProcessLimit = conf.getValueAsInt("passiveProcessLimit");
 			connectionLimit = conf.getValueAsInt("connectionLimit");
@@ -381,7 +380,7 @@ public final class ConnectionManager {
 	private void unicastServiceScan() throws IOException {
 		log.log("Starting unicast scan on range " + ipFormat.replaceAll("X", ipScanRangeMin + "-" + ipScanRangeMax));
 		String ip = ipFormat;
-		// Scan all IP's from range 1-253
+		// Scan all IP's in range
 		InetSocketAddress rollingAdd;
 		for (int i = ipScanRangeMin; i <= ipScanRangeMax; i++) {
 			final InetSocketAddress rolling = new InetSocketAddress(ip.replace("X", "" + i), port);

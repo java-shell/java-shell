@@ -217,8 +217,29 @@ public abstract class JProcess implements Serializable {
 					e.printStackTrace();
 				}
 				// Cleanup
-				stop();
-				t.interrupt();
+				try {
+					// If the process has completed, run the stop procedure from the Process Manager
+
+					// TODO Check for Asynchronous ReturnValue, if exists, then zombie the process
+					// (Keep in JSHProcesses) until ReturnValue needs to be evaluated
+					terra.shell.utils.system.ReturnType ret = terra.shell.utils.system.ReturnType.VOID;
+					if (me.getClass().isAnnotationPresent(JProcess.ReturnType.class)) {
+						ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
+					}
+					if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
+						log.debug("Process " + getName() + " not marked ASYNC, removing");
+						JSHProcesses.stopProcess(me);
+						// Cleanup
+						LogManager.removeLogger(log);
+						sUID = null;
+						halt();
+					} else {
+						log.debug("Not halting process " + getName() + " as process is marked ASYNC");
+					}
+				} catch (Exception e) {
+					LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
+					e.printStackTrace();
+				}
 				isGoing = false;
 				stop = true;
 
@@ -226,50 +247,7 @@ public abstract class JProcess implements Serializable {
 			}
 		}, user);
 		t.setName(getName());
-		try {
-			// Run the thread which contains the task to be executed
-			t.start();
-			boolean suspended = false;
-			// Simple process monitor
-			while (!t.isInterrupted() && !stop && isGoing) {
-				// Check every 20ms if the process is either suspended, or stopped
-				Thread.sleep(20);
-				if (suspend & !suspended) {
-					t.wait();
-					suspended = true;
-				} else {
-					if (!suspend & suspended) {
-						t.notify();
-						suspended = false;
-					}
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		try {
-			// If the process has completed, run the stop procedure from the Process Manager
-
-			// TODO Check for Asynchronous ReturnValue, if exists, then zombie the process
-			// (Keep in JSHProcesses) until ReturnValue needs to be evaluated
-			terra.shell.utils.system.ReturnType ret = terra.shell.utils.system.ReturnType.VOID;
-			if (me.getClass().isAnnotationPresent(JProcess.ReturnType.class)) {
-				ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
-			}
-			if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
-				log.debug("Process " + getName() + " not marked ASYNC, removing");
-				JSHProcesses.stopProcess(me);
-				// Cleanup
-				LogManager.removeLogger(log);
-				sUID = null;
-				halt();
-			} else {
-				log.debug("Not halting process " + getName() + " as process is marked ASYNC");
-			}
-		} catch (Exception e) {
-			LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
-			e.printStackTrace();
-		}
+		t.start();
 
 		return true;
 
