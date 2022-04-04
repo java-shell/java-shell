@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import terra.shell.logging.LogManager;
+import terra.shell.logging.Logger;
 import terra.shell.utils.system.user.InvalidUserException;
 import terra.shell.utils.system.user.User;
 import terra.shell.utils.system.user.UserManagement;
@@ -16,17 +17,18 @@ import terra.shell.utils.system.user.UserManagement.UserValidation;
 public class PermissionManager extends SecurityManager {
 	private HashMap<User, HashSet<PermissionToken>> permissionTokens = new HashMap<User, HashSet<PermissionToken>>();
 	private HashMap<String, PermissionToken> registeredPermissions = new HashMap<String, PermissionToken>();
+	private final Logger log = LogManager.getLogger("PermissionsManagement");
 
 	public PermissionManager() {
-		LogManager.write("PermissionManager active ----------------------------------");
+		log.debug("PermissionManager active ----------------------------------");
 	}
 
 	public synchronized void checkUserPermission(PermissionToken perm, User u, User local, UserValidation validation)
-			throws Exception {
+			throws InvalidUserException {
 		if (UserManagement.checkUserValidation(u, validation)) {
 		} else
 			throw new InvalidUserException();
-		UserManagement.checkUserPermissionAccess(perm.getPermissionValue(), u, local, validation);
+		UserManagement.checkUserPermissionAccess(perm.getPermissionValue(), u);
 	}
 
 	public synchronized void registerPermissionToken(PermissionToken token, User u, UserValidation validation)
@@ -45,7 +47,7 @@ public class PermissionManager extends SecurityManager {
 			return null;
 		}
 		if (UserManagement.checkUserValidation(u, validation)) {
-			if (!UserManagement.checkUserPermissionAccess(perm.getPermissionValue(), u, local, validation))
+			if (!UserManagement.checkUserPermissionAccess(perm.getPermissionValue(), u))
 				throw new SecurityException(
 						"User " + u.getUserName() + " does not have access to permission " + perm.getPermissionValue());
 			if (!permissionTokens.containsKey(u)) {
@@ -60,192 +62,171 @@ public class PermissionManager extends SecurityManager {
 	// TODO Need to figure out how to isolate an object within a Thread, and utilize
 	// that to give thread-based permissions
 	// UPDATE: Utilize PermittedThread to check thread for User access
-	private void checkThreadWrapping() {
+	private User checkThreadWrapping() {
 		Thread t = Thread.currentThread();
 		if (t instanceof PermittedThread) {
 			User u = ((PermittedThread) t).retrieveUser();
-			// TODO Check against permissions
+			if (u != null)
+				return u;
 		}
-		// t.retrieveWrappedObject();
+		throw new SecurityException();
 	}
 
 	@Override
 	protected Class<?>[] getClassContext() {
-		// TODO Auto-generated method stub
 		return super.getClassContext();
 	}
 
 	@Override
 	public Object getSecurityContext() {
-		// TODO Auto-generated method stub
 		return super.getSecurityContext();
 	}
 
 	@Override
 	public void checkPermission(Permission perm) {
-		// TODO Auto-generated method stub
-		super.checkPermission(perm);
+		log.debug("Got permission request for: " + perm.getName());
+		log.debug(perm.getActions());
+		return;
+		// User threadUser = checkThreadWrapping();
+		// if (UserManagement.checkUserPermissionAccess(perm.getName(), threadUser))
+		// return;
+		// throw new SecurityException();
+
 	}
 
 	@Override
 	public void checkPermission(Permission perm, Object context) {
-		// TODO Auto-generated method stub
-		super.checkPermission(perm, context);
+		User threadUser = checkThreadWrapping();
+		UserManagement.checkUserPermissionAccess(perm.getName(), threadUser);
 	}
 
 	@Override
 	public void checkCreateClassLoader() {
-		// TODO Auto-generated method stub
 		super.checkCreateClassLoader();
 	}
 
 	@Override
 	public void checkAccess(Thread t) {
-		// TODO Auto-generated method stub
 		super.checkAccess(t);
 	}
 
 	@Override
 	public void checkAccess(ThreadGroup g) {
-		// TODO Auto-generated method stub
 		super.checkAccess(g);
 	}
 
 	@Override
 	public void checkExit(int status) {
-		// TODO Auto-generated method stub
 		super.checkExit(status);
 	}
 
 	@Override
 	public void checkExec(String cmd) {
-		// TODO Auto-generated method stub
 		super.checkExec(cmd);
 	}
 
 	@Override
 	public void checkLink(String lib) {
-		// TODO Auto-generated method stub
 		super.checkLink(lib);
 	}
 
 	@Override
 	public void checkRead(FileDescriptor fd) {
-		// TODO Auto-generated method stub
 		super.checkRead(fd);
 	}
 
 	@Override
 	public void checkRead(String file) {
-		// TODO Auto-generated method stub
 		super.checkRead(file);
 	}
 
 	@Override
 	public void checkRead(String file, Object context) {
-		// TODO Auto-generated method stub
 		super.checkRead(file, context);
 	}
 
 	@Override
 	public void checkWrite(FileDescriptor fd) {
-		// TODO Auto-generated method stub
 		super.checkWrite(fd);
 	}
 
 	@Override
 	public void checkWrite(String file) {
-		// TODO Auto-generated method stub
 		super.checkWrite(file);
 	}
 
 	@Override
 	public void checkDelete(String file) {
-		// TODO Auto-generated method stub
 		super.checkDelete(file);
 	}
 
 	@Override
 	public void checkConnect(String host, int port) {
-		// TODO Auto-generated method stub
 		super.checkConnect(host, port);
 	}
 
 	@Override
 	public void checkConnect(String host, int port, Object context) {
-		// TODO Auto-generated method stub
 		super.checkConnect(host, port, context);
 	}
 
 	@Override
 	public void checkListen(int port) {
-		// TODO Auto-generated method stub
 		super.checkListen(port);
 	}
 
 	@Override
 	public void checkAccept(String host, int port) {
-		// TODO Auto-generated method stub
 		super.checkAccept(host, port);
 	}
 
 	@Override
 	public void checkMulticast(InetAddress maddr) {
-		// TODO Auto-generated method stub
 		super.checkMulticast(maddr);
 	}
 
 	@Override
 	public void checkMulticast(InetAddress maddr, byte ttl) {
-		// TODO Auto-generated method stub
 		super.checkMulticast(maddr, ttl);
 	}
 
 	@Override
 	public void checkPropertiesAccess() {
-		// TODO Auto-generated method stub
 		super.checkPropertiesAccess();
 	}
 
 	@Override
 	public void checkPropertyAccess(String key) {
-		// TODO Auto-generated method stub
 		super.checkPropertyAccess(key);
 	}
 
 	@Override
 	public void checkPrintJobAccess() {
-		// TODO Auto-generated method stub
 		super.checkPrintJobAccess();
 	}
 
 	@Override
 	public void checkPackageAccess(String pkg) {
-		// TODO Auto-generated method stub
 		super.checkPackageAccess(pkg);
 	}
 
 	@Override
 	public void checkPackageDefinition(String pkg) {
-		// TODO Auto-generated method stub
 		super.checkPackageDefinition(pkg);
 	}
 
 	@Override
 	public void checkSetFactory() {
-		// TODO Auto-generated method stub
 		super.checkSetFactory();
 	}
 
 	@Override
 	public void checkSecurityAccess(String target) {
-		// TODO Auto-generated method stub
 		super.checkSecurityAccess(target);
 	}
 
 	@Override
 	public ThreadGroup getThreadGroup() {
-		// TODO Auto-generated method stub
 		return super.getThreadGroup();
 	}
 

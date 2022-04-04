@@ -51,6 +51,7 @@ import terra.shell.utils.keys.Event;
 import terra.shell.utils.keys.EventInterpreter;
 import terra.shell.utils.keys.EventType;
 import terra.shell.utils.keys._Listener;
+import terra.shell.utils.perms.PermissionManager;
 import terra.shell.utils.streams.DualPrintStream;
 import terra.shell.utils.streams.UnclosableInStream;
 import terra.shell.utils.system.ByteClassLoader;

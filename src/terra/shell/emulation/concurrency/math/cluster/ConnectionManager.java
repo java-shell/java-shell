@@ -8,10 +8,12 @@ import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.net.DatagramPacket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -76,6 +78,8 @@ public final class ConnectionManager {
 			ipScanRangeMax = 253, handshakeTimeout = 200, nodeCheckInterval = 60;
 	private Timer checkNodesTimer;
 
+	private boolean multicastServiceScan, multicastKeepAlive;
+
 	// TODO
 	// Finish setting up defaults
 	// Finish LocalServer clientHandler
@@ -101,6 +105,8 @@ public final class ConnectionManager {
 			conf.setValue("ipScanRangeMax", 253);
 			conf.setValue("handshakeTimeout", 200);
 			conf.setValue("nodeCheckInterval", 60);
+			conf.setValue("multicastServiceScanEnable", "true");
+			conf.setValue("multicastKeepAliveEnable", "true");
 			// TODO Finish setting up Default values
 		} else {
 			// If conf exists, gather configuration options
@@ -112,6 +118,8 @@ public final class ConnectionManager {
 			connectionLimit = conf.getValueAsInt("connectionLimit");
 			handshakeTimeout = conf.getValueAsInt("handshakeTimeout");
 			nodeCheckInterval = conf.getValueAsInt("nodeCheckInterval");
+			multicastServiceScan = Boolean.parseBoolean((String) conf.getValue("multicastServiceScanEnable"));
+			multicastKeepAlive = Boolean.parseBoolean((String) conf.getValue("multicastKeepAliveEnable"));
 
 			int ipScanMin = conf.getValueAsInt("ipScanRangeMin");
 			int ipScanMax = conf.getValueAsInt("ipScanRangeMax");
@@ -309,7 +317,52 @@ public final class ConnectionManager {
 	 */
 	public void serviceScan() throws IOException {
 		log.log("Running service scan...");
+		if (!multicastServiceScan)
+			unicastServiceScan();
+		else
+			multicastServiceScan();
+	}
 
+	private void multicastServiceScan() throws IOException {
+		InetAddress mCastAddress = InetAddress.getByName("229.245.50.2");
+		final MulticastSocket mCast = new MulticastSocket(5963);
+		mCast.joinGroup(mCastAddress);
+		DatagramPacket hereIAm = new DatagramPacket(new byte[] { 4, 6, 8 }, 3, mCastAddress, 5963);
+		mCast.send(hereIAm);
+		JProcess multicastServiceScanProcess = new JProcess() {
+
+			@Override
+			public String getName() {
+				return "MulticastServiceScanProcess";
+			}
+
+			@Override
+			public boolean start() {
+				while (true) {
+					byte[] buf = new byte[3];
+					DatagramPacket recv = new DatagramPacket(buf, 3);
+					try {
+						mCast.receive(recv);
+						// Here I Am packet:
+						if (buf[0] == 4 && buf[1] == 6 && buf[2] == 8) {
+							addNode((Inet4Address) recv.getAddress());
+						}
+						// Leaving packet:
+						if (buf[0] == 9 && buf[1] == 9 && buf[2] == 9) {
+							// TODO Remove node from "nodes"
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+						return false;
+					}
+				}
+			}
+
+		};
+		multicastServiceScanProcess.run();
+	}
+
+	private void unicastServiceScan() throws IOException {
 		String ip = ipFormat;
 		// Scan all IP's from range 1-253
 		InetSocketAddress rollingAdd;
