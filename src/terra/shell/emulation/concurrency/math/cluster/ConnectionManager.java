@@ -78,7 +78,7 @@ public final class ConnectionManager {
 			ipScanRangeMax = 253, handshakeTimeout = 200, nodeCheckInterval = 60;
 	private Timer checkNodesTimer;
 
-	private boolean multicastServiceScan, multicastKeepAlive;
+	private boolean multicastServiceScan;
 
 	// TODO
 	// Finish setting up defaults
@@ -106,7 +106,6 @@ public final class ConnectionManager {
 			conf.setValue("handshakeTimeout", 200);
 			conf.setValue("nodeCheckInterval", 60);
 			conf.setValue("multicastServiceScanEnable", "true");
-			conf.setValue("multicastKeepAliveEnable", "true");
 			// TODO Finish setting up Default values
 		} else {
 			// If conf exists, gather configuration options
@@ -119,7 +118,6 @@ public final class ConnectionManager {
 			handshakeTimeout = conf.getValueAsInt("handshakeTimeout");
 			nodeCheckInterval = conf.getValueAsInt("nodeCheckInterval");
 			multicastServiceScan = Boolean.parseBoolean((String) conf.getValue("multicastServiceScanEnable"));
-			multicastKeepAlive = Boolean.parseBoolean((String) conf.getValue("multicastKeepAliveEnable"));
 
 			int ipScanMin = conf.getValueAsInt("ipScanRangeMin");
 			int ipScanMax = conf.getValueAsInt("ipScanRangeMax");
@@ -323,7 +321,14 @@ public final class ConnectionManager {
 			multicastServiceScan();
 	}
 
+	/**
+	 * Scan for Nodes on the LAN utilizing a MulticastSocket, by setting continually
+	 * listening for new "Here I Am" packets (Recommended Method)
+	 * 
+	 * @throws IOException
+	 */
 	private void multicastServiceScan() throws IOException {
+		log.log("Starting Mutlicast Service Scan on 229.245.50.2:5963");
 		InetAddress mCastAddress = InetAddress.getByName("229.245.50.2");
 		final MulticastSocket mCast = new MulticastSocket(5963);
 		mCast.joinGroup(mCastAddress);
@@ -345,6 +350,10 @@ public final class ConnectionManager {
 						mCast.receive(recv);
 						// Here I Am packet:
 						if (buf[0] == 4 && buf[1] == 6 && buf[2] == 8) {
+							InetAddress recieved = recv.getAddress();
+							if (localAddresses.contains(recieved.getHostAddress())) {
+								continue;
+							}
 							addNode((Inet4Address) recv.getAddress());
 						}
 						// Leaving packet:
@@ -353,6 +362,7 @@ public final class ConnectionManager {
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
+						mCast.close();
 						return false;
 					}
 				}
@@ -362,7 +372,14 @@ public final class ConnectionManager {
 		multicastServiceScanProcess.run();
 	}
 
+	/**
+	 * Scan for Nodes on the Network by individually connecting to every IP address
+	 * in a given range, and attempting to complete a handshake with each
+	 * 
+	 * @throws IOException
+	 */
 	private void unicastServiceScan() throws IOException {
+		log.log("Starting unicast scan on range " + ipFormat.replaceAll("X", "1-253"));
 		String ip = ipFormat;
 		// Scan all IP's from range 1-253
 		InetSocketAddress rollingAdd;
