@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -221,7 +222,6 @@ public final class ConnectionManager {
 	public boolean sendToAll(final JProcess p, final OutputStream out, final InputStream in) {
 		for (final Node n : nodes) {
 			JProcess pr = new JProcess() {
-
 				@Override
 				public String getName() {
 					return "SendProc";
@@ -330,9 +330,10 @@ public final class ConnectionManager {
 		log.log("Starting Mutlicast Service Scan on 229.245.50.2:5963");
 		InetAddress mCastAddress = InetAddress.getByName("229.245.50.2");
 		final MulticastSocket mCast = new MulticastSocket(5963);
+		final DatagramSocket dSock = new DatagramSocket();
 		mCast.joinGroup(mCastAddress);
 		DatagramPacket hereIAm = new DatagramPacket(new byte[] { 4, 6, 8 }, 3, mCastAddress, 5963);
-		mCast.send(hereIAm);
+		dSock.send(hereIAm);
 		JProcess multicastServiceScanProcess = new JProcess() {
 
 			@Override
@@ -347,6 +348,7 @@ public final class ConnectionManager {
 					DatagramPacket recv = new DatagramPacket(buf, 3);
 					try {
 						mCast.receive(recv);
+						log.debug("Received Multicast Packet: " + recv.getAddress().getHostAddress());
 						// Here I Am packet:
 						if (buf[0] == 4 && buf[1] == 6 && buf[2] == 8) {
 							InetAddress recieved = recv.getAddress();
