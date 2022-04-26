@@ -72,6 +72,7 @@ public final class ConnectionManager {
 	private HashSet<String> localAddresses = new HashSet<String>();
 
 	private static Queue<Node> nodes = new PriorityQueue<Node>();
+	private static HashSet<String> nodeAddresses = new HashSet<String>();
 	private Logger log = LogManager.getLogger("ClusterManager");
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
@@ -417,6 +418,9 @@ public final class ConnectionManager {
 	 * @throws IOException
 	 */
 	public boolean addNode(Inet4Address ip) throws UnknownHostException, IOException {
+		if (nodeAddresses.contains(ip.getHostAddress()))
+			return true;
+		nodeAddresses.add(ip.getHostAddress());
 		// Ping the server to check if it exists
 		long ping = ping(ip);
 		if (ping != -1) {
@@ -507,6 +511,7 @@ public final class ConnectionManager {
 							long ping = ping(n.getIPv4());
 							if (ping == -1) {
 								nodes.remove(n);
+								nodeAddresses.remove(n.ip.getHostAddress());
 							} else {
 								n.lastPinged = System.currentTimeMillis();
 								n.ping = ping;
@@ -514,6 +519,7 @@ public final class ConnectionManager {
 						}
 					} catch (IOException e) {
 						nodes.remove(n);
+						nodeAddresses.remove(n.ip.getHostAddress());
 					}
 				}
 
@@ -1184,12 +1190,6 @@ public final class ConnectionManager {
 				return null;
 			}
 
-			// byte[] cBytes = new byte[cSize];
-			// Receive Class
-			// for (int i = 0; i < cSize; i++) {
-			// cBytes[i] = (byte) sc.nextInt();
-			// }
-			// sc.nextLine();
 			log.debug("Realizing Quantized class...");
 			// Load class from bytes
 			// Save 'c' for a bit so GC doesn't remove the class from mem
@@ -1245,20 +1245,17 @@ public final class ConnectionManager {
 	private class Node implements Comparable<Node> {
 		private long ping;
 		private Inet4Address ip;
-		private Socket s;
 		private long lastUsed, lastPinged;
 
 		@SuppressWarnings("unused")
 		public Node(Inet4Address ip) throws UnknownHostException, IOException {
 			this.ip = ip;
-			s = new Socket(ip.getHostAddress(), port);
 			updatePing();
 			lastUsed = System.currentTimeMillis();
 		}
 
 		public Node(Inet4Address ip, boolean doPing) throws UnknownHostException, IOException {
 			this.ip = ip;
-			s = new Socket(ip.getHostAddress(), port);
 			if (doPing)
 				updatePing();
 			lastUsed = System.currentTimeMillis();
@@ -1266,7 +1263,6 @@ public final class ConnectionManager {
 
 		public Node(Inet4Address ip, long ping) throws UnknownHostException, IOException {
 			this.ip = ip;
-			s = new Socket(ip.getHostAddress(), port);
 			this.ping = ping;
 			lastUsed = System.currentTimeMillis();
 			lastPinged = System.currentTimeMillis();
@@ -1274,7 +1270,7 @@ public final class ConnectionManager {
 
 		@SuppressWarnings("unused")
 		public Node(Socket s) throws IOException {
-			this.s = s;
+			this.ip = (Inet4Address) s.getInetAddress();
 			updatePing();
 			lastUsed = System.currentTimeMillis();
 		}
@@ -1283,7 +1279,6 @@ public final class ConnectionManager {
 		public Node(Inet4Address ip, int ping) throws UnknownHostException, IOException {
 			this.ping = ping;
 			this.ip = ip;
-			s = new Socket(ip.getHostAddress(), port);
 			lastUsed = System.currentTimeMillis();
 		}
 
