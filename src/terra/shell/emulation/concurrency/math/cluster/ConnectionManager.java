@@ -938,7 +938,7 @@ public final class ConnectionManager {
 			String next = sc.nextLine();
 			if (!next.equals("CHANNELTRANSFER")) {
 				throw new IOException(
-						"Socket not prepared for Channel Transfer, or got out of sync with remote resources");
+						"Socket not prepared for Channel Transfer, or got out of sync with remote resources, got: " + next);
 			}
 			out.println("CHANNELREADY");
 			int size = sc.nextInt();
