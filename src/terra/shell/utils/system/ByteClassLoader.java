@@ -108,6 +108,7 @@ public class ByteClassLoader extends URLClassLoader {
 		try {
 			definePackage(pkg, "", "", "", "", "", "", null);
 		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
 		}
 		try {
 			Class<?> tmp = defineClass(name, b, 0, b.length);
@@ -121,9 +122,12 @@ public class ByteClassLoader extends URLClassLoader {
 			try {
 				preLoad = loadClass(name);
 			} catch (Exception e1) {
+				e.printStackTrace();
 				throw (e);
 			}
 			if (preLoad == null) {
+				e.printStackTrace();
+				LogManager.write("PRELOAD_NULL");
 				throw (e);
 			}
 			return preLoad;

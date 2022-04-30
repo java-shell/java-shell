@@ -41,6 +41,7 @@ import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
+import terra.shell.modules.ModuleManagement;
 import terra.shell.utils.JProcess;
 import terra.shell.utils.ReturnValue;
 import terra.shell.utils.system.JSHClassLoader;
@@ -655,7 +656,9 @@ public final class ConnectionManager {
 						loader = loadersByUUID.get(chkSum);
 					} else {
 						out.println("NONEXIST");
-						loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
+						loader = new JSHClassLoader(
+								new URL[] { new URL("file://" + Launch.getConfD().getParent() + "/modules/") },
+								ModuleManagement.getLoader());
 						loadersByUUID.put(chkSum, loader);
 						log.debug("Realizing Quantized class...");
 						// Load class from bytes
@@ -938,7 +941,8 @@ public final class ConnectionManager {
 			String next = sc.nextLine();
 			if (!next.equals("CHANNELTRANSFER")) {
 				throw new IOException(
-						"Socket not prepared for Channel Transfer, or got out of sync with remote resources, got: " + next);
+						"Socket not prepared for Channel Transfer, or got out of sync with remote resources, got: "
+								+ next);
 			}
 			out.println("CHANNELREADY");
 			int size = sc.nextInt();

@@ -31,7 +31,7 @@ public final class ModuleManagement {
 	static Hashtable<String, Module> modules = new Hashtable<String, Module>();
 	static Hashtable<Module, Thread> mThreads = new Hashtable<Module, Thread>();
 	private static Logger log = LogManager.getLogger("MM");
-	private ByteClassLoader bcl = null;
+	private static ByteClassLoader bcl = null;
 	static boolean isStarted;
 
 	public String getName() {
@@ -49,10 +49,10 @@ public final class ModuleManagement {
 				log.log("Loading modules");
 				try {
 					File prefix = Launch.getConfD().getParentFile();
-
+					bcl = new ByteClassLoader(new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") },
+							Launch.getClassLoader());
+					;
 					Scanner sc = new Scanner(new FileInputStream(mods));
-					JSHClassLoader urlc = new JSHClassLoader(
-							new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
 
 					if (Launch.modularizedCmds) {
 
@@ -91,9 +91,7 @@ public final class ModuleManagement {
 									jarRes.add(res[i]);
 								}
 							}
-							bcl = new ByteClassLoader(
-									new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") },
-									Launch.getClassLoader());
+							// bcl =
 							if (jarRes.size() != 0) {
 								URL[] urls = new URL[jarRes.size() + 1];
 								urls[0] = new URL("file://" + prefix.getAbsolutePath() + "/modules/");
@@ -329,6 +327,10 @@ public final class ModuleManagement {
 	 */
 	public static Enumeration<String> getModules() {
 		return modules.keys();
+	}
+
+	public static ByteClassLoader getLoader() {
+		return bcl;
 	}
 
 }
