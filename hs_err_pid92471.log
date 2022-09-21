@@ -1,0 +1,32 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00000001023e148a, pid=92471, tid=16131
+#
+# JRE version: Java(TM) SE Runtime Environment (9.0+11) (build 9.0.4+11)
+# Java VM: Java HotSpot(TM) 64-Bit Server VM (9.0.4+11, mixed mode, tiered, compressed oops, g1 gc, bsd-amd64)
+# Problematic frame:
+# C  [libjimage.dylib+0x248a]  _ZNK15ImageFileReader19find_location_indexEPKcPy+0x2c
+#
+# No core dump will be written. Core dumps have been disabled. To enable core dumping, try "ulimit -c unlimited" before starting Java again
+#
+# If you would like to submit a bug report, please visit:
+#   http://bugreport.java.com/bugreport/crash.jsp
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: -agentlib:jdwp=transport=dt_socket,suspend=y,address=localhost:49358 -Dvisualvm.id=572893136857631 -Dfile.encoding=UTF-8 terra.shell.launch.Launch -pf /Users/schirripad@moravian.edu/JSHOUT
+
+Host: MacBookPro13,2 x86_64 3300 MHz, 4 cores, 8G, Darwin 20.6.0
+Time: Sat Jan  8 16:18:10 2022 EST elapsed time: 228 seconds (0d 0h 3m 48s)
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x00007fc21a023800):  JavaThread "Signal Dispatcher" daemon [_thread_in_vm, id=16131, stack(0x000070000dc50000,0x000070000dd50000)]
+
+Stack: [0x000070000dc50000,0x000070000dd50000],  sp=0x000070000dd4e380,  free space=1016k
+Native frames: (J=compiled Java code, A=aot compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libjimage.dylib+0x248a]  _ZNK15ImageFileReader19find_location_indexEPKcPy+0x2c
+C  [libjimage.dylib+0x2831]  JIMAGE_FindResource+0xd7
+V

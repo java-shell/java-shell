@@ -12,9 +12,8 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
-import java.security.spec.EncodedKeySpec;
 import java.security.spec.KeySpec;
-import java.security.spec.X509EncodedKeySpec;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 
 import javax.crypto.Cipher;
@@ -24,9 +23,11 @@ import javax.crypto.spec.PBEKeySpec;
 import terra.shell.utils.system.ByteClassLoader;
 import terra.shell.utils.system.Variable;
 
+//FIXME Either fix this or delete, get "BadPadding" on decrypt?
 public final class Encrypted extends Variable.Type {
 
-	private String salt, encodedKey, encodedObject, objKey, serializedObj;
+	private String salt, encodedKey, encodedObject, serializedObj;
+	private byte[] serializedObjBytes, encodedObjBytes, objKey;
 	private boolean keyRetrieved = false;
 
 	public Encrypted(Object decrypted) throws Exception {
@@ -144,41 +145,114 @@ public final class Encrypted extends Variable.Type {
 		cipher.init(Cipher.ENCRYPT_MODE, pair.getPublic());
 		byte[] serializedBytes = fin;
 		this.serializedObj = Base64.getEncoder().encodeToString(serializedBytes);
+		this.serializedObjBytes = serializedBytes;
+		this.encodedObjBytes = objBytes;
 
-		objKey = Base64.getEncoder().encodeToString(pair.getPrivate().getEncoded());
+		objKey = pair.getPrivate().getEncoded();
 
 		return objBytes;
 	}
 
-	//TODO Add block based decryption, similar to how the encryption method functions
+	// TODO Add block based decryption, similar to how the encryption method
+	// functions
 	public Object getDecryptedObject(LockedVariableKey lockKey) throws Exception {
-		String key = lockKey.key1;
-		String priv = lockKey.key2;
-		KeySpec keySpec = new PBEKeySpec(key.toCharArray(), Base64.getDecoder().decode(salt), 2000, 160);
-		SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-		if (encodedKey == (Base64.getEncoder().encodeToString(keyFactory.generateSecret(keySpec).getEncoded()))) {
-			KeyFactory factory = KeyFactory.getInstance("RSA");
-			EncodedKeySpec encKeySpec = new X509EncodedKeySpec(Base64.getDecoder().decode(priv));
-			PrivateKey privateKey = factory.generatePrivate(encKeySpec);
-			Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-			cipher.init(Cipher.DECRYPT_MODE, privateKey);
-			byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(encodedObject));
-			byte[] decryptedSerialized = cipher.doFinal(Base64.getDecoder().decode(serializedObj));
+		byte[] priv = lockKey.key;
+		// KeySpec keySpec = new PBEKeySpec(key.toCharArray(),
+		// Base64.getDecoder().decode(salt), 2000, 160);
+		// SecretKeyFactory keyFactory =
+		// SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+		KeyFactory factory = KeyFactory.getInstance("RSA");
+		PKCS8EncodedKeySpec encKeySpec = new PKCS8EncodedKeySpec(priv);
+		PrivateKey privateKey = factory.generatePrivate(encKeySpec);
+		Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+		cipher.init(Cipher.DECRYPT_MODE, privateKey);
 
-			ByteClassLoader bcl = new ByteClassLoader(null);
-			Class<?> c = bcl.getClass(decrypted);
+		byte[] bytes = encodedObjBytes;
 
-			ObjectInputStream objIn = new ObjectInputStream(new ByteArrayInputStream(decryptedSerialized));
-			return objIn.readObject();
+		byte[] buf = new byte[100];
+		byte[] itr = new byte[0];
+		byte[] fin = new byte[0];
+		for (int i = 0; i < bytes.length; i++) {
+			if ((i > 0) && (i % 100 == 0)) {
+				itr = cipher.doFinal(buf);
+				byte[] combiner = new byte[itr.length + fin.length];
+				for (int j = 0; j < fin.length; j++) {
+					combiner[j] = fin[j];
+				}
+				for (int j = 0; j < itr.length; j++) {
+					combiner[fin.length + j] = itr[j];
+				}
+				fin = combiner;
+				combiner = null;
+				if (i + 100 > bytes.length)
+					buf = new byte[bytes.length - i];
+				else
+					buf = new byte[100];
+			}
+			buf[i % 100] = bytes[i];
 		}
-		return null;
+
+		itr = cipher.doFinal(buf);
+		byte[] combiner = new byte[itr.length + fin.length];
+		for (int j = 0; j < fin.length; j++) {
+			combiner[j] = fin[j];
+		}
+		for (int j = 0; j < itr.length; j++) {
+			combiner[fin.length + j] = itr[j];
+		}
+		fin = combiner;
+		combiner = null;
+
+		byte[] objBytes = fin;
+
+		buf = new byte[100];
+		itr = new byte[0];
+		fin = new byte[0];
+		for (int i = 0; i < bytes.length; i++) {
+			if ((i > 0) && (i % 100 == 0)) {
+				itr = cipher.doFinal(buf);
+				combiner = new byte[itr.length + fin.length];
+				for (int j = 0; j < fin.length; j++) {
+					combiner[j] = fin[j];
+				}
+				for (int j = 0; j < itr.length; j++) {
+					combiner[fin.length + j] = itr[j];
+				}
+				fin = combiner;
+				combiner = null;
+				if (i + 100 > bytes.length)
+					buf = new byte[bytes.length - i];
+				else
+					buf = new byte[100];
+			}
+			buf[i % 100] = bytes[i];
+		}
+
+		itr = cipher.doFinal(buf);
+		combiner = new byte[itr.length + fin.length];
+		for (int j = 0; j < fin.length; j++) {
+			combiner[j] = fin[j];
+		}
+		for (int j = 0; j < itr.length; j++) {
+			combiner[fin.length + j] = itr[j];
+		}
+		fin = combiner;
+		combiner = null;
+
+		byte[] serializedBytes = fin;
+
+		ByteClassLoader bcl = new ByteClassLoader(null);
+		Class<?> c = bcl.getClass(objBytes);
+
+		ObjectInputStream objIn = new ObjectInputStream(new ByteArrayInputStream(serializedBytes));
+		return objIn.readObject();
 	}
 
 	public LockedVariableKey getKey() throws IllegalAccessException {
-		if (!keyRetrieved)
+		if (keyRetrieved)
 			throw new IllegalAccessException("Attempted to retrieve key twice");
 		keyRetrieved = true;
-		return new LockedVariableKey(encodedKey, objKey);
+		return new LockedVariableKey(objKey);
 	}
 
 	@Override
@@ -187,11 +261,10 @@ public final class Encrypted extends Variable.Type {
 	}
 
 	public final class LockedVariableKey {
-		private final String key1, key2;
+		private final byte[] key;
 
-		public LockedVariableKey(String key1, String key2) {
-			this.key1 = key1;
-			this.key2 = key2;
+		public LockedVariableKey(byte[] key) {
+			this.key = key;
 		}
 	}
 

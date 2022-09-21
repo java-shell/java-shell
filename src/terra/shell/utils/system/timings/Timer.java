@@ -9,8 +9,7 @@ import java.util.Hashtable;
 import terra.shell.utils.keys.Event;
 
 public final class Timer implements ActionListener {
-	private static final javax.swing.Timer t = new javax.swing.Timer(0,
-			new Timer());
+	private static final javax.swing.Timer t = new javax.swing.Timer(0, new Timer());
 	private static final ArrayList<TimerEvent> liveEvents = new ArrayList<TimerEvent>();
 	private static final Hashtable<TimerEvent, Hashtable<Integer, Integer>> liveTime = new Hashtable<TimerEvent, Hashtable<Integer, Integer>>();
 
@@ -46,8 +45,8 @@ public final class Timer implements ActionListener {
 		final Enumeration<Hashtable<Integer, Integer>> en = liveTime.elements();
 		int i = 0;
 		while (en.hasMoreElements()) {
-			Hashtable<Integer, Integer> tmp = en.nextElement();
 			TimerEvent te = liveEvents.get(i);
+			te.run();
 			i++;
 		}
 	}
