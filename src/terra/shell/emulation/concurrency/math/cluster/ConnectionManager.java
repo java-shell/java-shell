@@ -71,6 +71,7 @@ public final class ConnectionManager {
 	private JSHClassLoader loader;
 	private Hashtable<Long, JSHClassLoader> loadersByUUID = new Hashtable<Long, JSHClassLoader>();
 	private HashSet<String> localAddresses = new HashSet<String>();
+	private HashSet<ConnectionListener> conListeners = new HashSet<ConnectionListener>();
 
 	private static Queue<Node> nodes = new PriorityQueue<Node>();
 	private static HashSet<String> nodeAddresses = new HashSet<String>();
@@ -200,9 +201,17 @@ public final class ConnectionManager {
 			// Select top Node based on Node.compareTo
 			// Compares Nodes based on overall ping, as well as time since last usage
 			Node n = nodes.poll();
+			if (n == null)
+				return false;
 			boolean success = ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
-			n.updatePing();
-			n.lastUsed = System.currentTimeMillis();
+			try {
+				n.updatePing();
+				n.lastUsed = System.currentTimeMillis();
+			} catch (Exception e1) {
+				log.debug("Node " + n.getIPv4().toString() + " failed in queue stage, removing node...");
+				nodeAddresses.remove(n.getIPv4().getHostAddress());
+				return queueProcess(p, out, in);
+			}
 			nodes.add(n);
 			if (!success)
 				queueProcess(p, out, in);
@@ -243,6 +252,24 @@ public final class ConnectionManager {
 			pr.run();
 		}
 		return true;
+	}
+
+	/**
+	 * Register a ConnectionListener to trigger when a node is connected
+	 * 
+	 * @param listener
+	 */
+	public void registerConnectionListener(ConnectionListener listener) {
+		conListeners.add(listener);
+	}
+
+	/**
+	 * Remove a ConnectionListener from the event trigger list
+	 * 
+	 * @param listener
+	 */
+	public void unregisterConnectionListener(ConnectionListener listener) {
+		conListeners.remove(listener);
 	}
 
 	/**
@@ -427,9 +454,15 @@ public final class ConnectionManager {
 		if (ping != -1) {
 			// Add the server as Node object
 			nodes.add(new Node(ip, ping));
+			triggerConnectionEvent(ip);
 			return true;
 		}
 		return false;
+	}
+
+	private void triggerConnectionEvent(InetAddress ip) {
+		for (ConnectionListener list : conListeners)
+			list.connectionEvent(ip);
 	}
 
 	/**
@@ -504,6 +537,7 @@ public final class ConnectionManager {
 						// Check if the Node is reachable
 						if (!n.getIPv4().isReachable(200)) {
 							nodes.remove(n);
+							triggerDisconnectEvent(n.ip);
 							return;
 						}
 						// If the Node is reachable, and it has been 5 minutes or more since the last
@@ -513,6 +547,7 @@ public final class ConnectionManager {
 							if (ping == -1) {
 								nodes.remove(n);
 								nodeAddresses.remove(n.ip.getHostAddress());
+								triggerDisconnectEvent(n.ip);
 							} else {
 								n.lastPinged = System.currentTimeMillis();
 								n.ping = ping;
@@ -521,12 +556,18 @@ public final class ConnectionManager {
 					} catch (IOException e) {
 						nodes.remove(n);
 						nodeAddresses.remove(n.ip.getHostAddress());
+						triggerDisconnectEvent(n.ip);
 					}
 				}
 
 			}).start();
 		}
 
+	}
+
+	private void triggerDisconnectEvent(InetAddress ip) {
+		for (ConnectionListener list : conListeners)
+			list.disconnectionEvent(ip);
 	}
 
 	/**
