@@ -1,20 +1,51 @@
 package terra.shell.utils.system.user;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+import javax.security.auth.DestroyFailedException;
 
 import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
+import terra.shell.logging.LogManager;
+import terra.shell.logging.Logger;
 
 public final class UserManagement {
-	private static ArrayList<User> registeredUsers = new ArrayList<User>(); // TODO change to hashtable<String, User>,
-																			// so access by name is easier
-	private static boolean init = false;
+	protected static final Hashtable<String, User> registeredUser = new Hashtable<String, User>();
+	protected static final Hashtable<User, Password> userCredentials = new Hashtable<User, Password>();
+	protected static final Hashtable<User, HashSet<UserValidation>> currentValidationTokens = new Hashtable<User, HashSet<UserValidation>>();
+	protected static final Logger log = LogManager.getLogger("UserManagement");
+	protected static HashMap<String, File> userInfoFiles;
+	protected static boolean init = false;
 
-	public static void init() {
+	public synchronized static void init() {
 		if (init)
 			return;
 
+		log.debug("Starting UserManagement");
+		init = true;
 		Configuration conf = Launch.getConfig("userManagement");
 		if (conf == null) {
 			conf = new Configuration(new File(Launch.getConfD(), "userManagement"));
@@ -22,315 +53,348 @@ public final class UserManagement {
 		}
 		String userNames = (String) conf.getValue("userNames");
 		String[] users = userNames.split(",");
-		for (String user : users) {
-			// TODO register users based on name
+		File userDirectory = new File(Launch.getConfD(), "userInfo");
+		if (!userDirectory.exists()) {
+			userDirectory.mkdir();
+		}
+		userInfoFiles = new HashMap<String, File>();
+		synchronized (userInfoFiles) {
+			File[] userFiles = userDirectory.listFiles();
+			for (File userFile : userFiles) {
+				try {
+					FileInputStream fin = new FileInputStream(userFile);
+					byte[] userNameBytes = new byte[25];
+					fin.read(userNameBytes);
+
+					String userName = new String(userNameBytes).trim();
+					userInfoFiles.put(userName, userFile);
+					log.debug(userFile.getName());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 		init = true;
 	}
 
-	public static void registerUser() {
+	public synchronized static User getUser(String userName, User local, UserValidation token) {
+		if (checkUserValidation(local, token)) {
+			if (registeredUser.containsKey(userName)) {
+				return registeredUser.get(userName);
+			}
+		}
+		return null;
+	}
+
+	// TODO implement actual permission checking
+	public static boolean checkUserPermissionAccess(String permission, User u) {
+		if (u.hasPermission(permission)) {
+			return true;
+		}
+		return false;
+	}
+
+	private synchronized static boolean saveUser(User u, Password pass) {
+		try {
+
+			File userDirectory = new File(Launch.getConfD(), "userInfo");
+			if (!userDirectory.exists()) {
+				userDirectory.mkdir();
+			}
+
+			Cipher c = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			c.init(Cipher.ENCRYPT_MODE, pass.secret);
+
+			File outputFile;
+
+			if (pass.secretFile == null) {
+				byte[] fileNameBytes = new byte[64];
+				SecureRandom.getInstanceStrong().nextBytes(fileNameBytes);
+				String fileName = Base64.getEncoder().encodeToString(fileNameBytes).replaceAll("/", "-");
+				outputFile = new File(userDirectory, fileName);
+			} else
+				outputFile = pass.secretFile;
+			FileOutputStream fout = new FileOutputStream(outputFile);
+			CipherOutputStream cout = new CipherOutputStream(fout, c);
+
+			byte[] userNameBytes = u.getUserName().getBytes();
+			byte[] userNameWriteBytes = new byte[25];
+
+			for (int i = 0; i < userNameWriteBytes.length; i++) {
+				if (i < userNameBytes.length) {
+					userNameWriteBytes[i] = userNameBytes[i];
+					continue;
+				}
+				userNameWriteBytes[i] = " ".getBytes()[0];
+			}
+
+			fout.write(userNameWriteBytes);
+			fout.write(Base64.getDecoder().decode(pass.salt));
+
+			// TODO Read from the encrypted file to load userinfo, add some way to ensure
+			// that the user was created on this machine, and not added in while offline
+
+			ObjectOutputStream oos = new ObjectOutputStream(cout);
+
+			oos.writeObject(u);
+			oos.writeObject(pass);
+			oos.flush();
+			cout.flush();
+			fout.flush();
+			oos.close();
+			cout.close();
+			fout.close();
+
+			pass.secretFile = outputFile;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public synchronized static User logIn(String userName, String password) throws InvalidUserException {
+		synchronized (userInfoFiles) {
+			if (userInfoFiles.containsKey(userName)) {
+				try {
+					File userInfoFile = userInfoFiles.get(userName);
+					FileInputStream fin = new FileInputStream(userInfoFile);
+					byte[] userNameBytes = new byte[25];
+					fin.read(userNameBytes);
+					String userNameVerify = new String(userNameBytes).trim();
+					if (!userName.equals(userNameVerify)) {
+						fin.close();
+						throw new InvalidUserException();
+					}
+					byte[] salt = new byte[32];
+					fin.read(salt);
+					KeySpec saveKeySpec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256);
+
+					SecretKey secret = new SecretKeySpec(
+							SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1").generateSecret(saveKeySpec).getEncoded(),
+							"AES");
+					Cipher c = Cipher.getInstance("AES/ECB/PKCS5Padding");
+					c.init(Cipher.DECRYPT_MODE, secret);
+					CipherInputStream cin = new CipherInputStream(fin, c);
+					ObjectInputStream oin = new ObjectInputStream(cin);
+					User userObject = (User) oin.readObject();
+					Password passObject = (Password) oin.readObject();
+
+					if (!passObject.doesMatch(password)) {
+						fin.close();
+						cin.close();
+						oin.close();
+						password = null;
+						userObject = null;
+						passObject = null;
+						secret.destroy();
+						secret = null;
+						saveKeySpec = null;
+						c = null;
+						System.gc();
+						throw new InvalidUserException();
+					}
+
+					userCredentials.put(userObject, passObject);
+					registeredUser.put(userName, userObject);
+					currentValidationTokens.put(userObject, new HashSet<UserValidation>());
+					fin.close();
+					cin.close();
+					oin.close();
+					password = null;
+					return userObject;
+				} catch (IOException | InvalidKeySpecException | NoSuchAlgorithmException | NoSuchPaddingException
+						| InvalidKeyException | ClassNotFoundException | DestroyFailedException e) {
+					e.printStackTrace();
+					if (e instanceof DestroyFailedException) {
+						log.err("FATAL ERROR, UNABLE TO REMOVE SENSITIVE INFORMATION FROM MEMORY, KILLING SYSTEM TO PRESERVE DATA");
+						System.exit(-5);
+					}
+					throw new InvalidUserException();
+				}
+			}
+		}
+		if (registeredUser.containsKey(userName)) {
+			User u = registeredUser.get(userName);
+			if (userCredentials.get(u).doesMatch(password)) {
+				return u;
+			}
+		}
+		throw new InvalidUserException();
+	}
+
+	public synchronized static boolean createNewUser(String userName, String password, User local,
+			UserValidation token) {
+		// FIXME Need to think up a better way to create first user
+		if (registeredUser.size() == 0 && local == null && token == null) {
+			if (userName.length() < 26)
+				try {
+					User u = new User(userName, SecureRandom.getInstanceStrong().nextInt());
+					Password pass = PasswordEncrypter.createEncryptedPassword(password);
+					userCredentials.put(u, pass);
+					registeredUser.put(userName, u);
+					currentValidationTokens.put(u, new HashSet<UserValidation>());
+					saveUser(u, pass);
+					return true;
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			return false;
+
+		}
+		if (checkUserValidation(local, token))
+			if (userName.length() < 26)
+				try {
+					User u = new User(userName, SecureRandom.getInstanceStrong().nextInt());
+					Password pass = PasswordEncrypter.createEncryptedPassword(password);
+					userCredentials.put(u, pass);
+					registeredUser.put(userName, u);
+					currentValidationTokens.put(u, new HashSet<UserValidation>());
+					return true;
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+		return false;
+	}
+
+	public synchronized static boolean removeUser(String userName, User local, UserValidation token) {
+		if (checkUserValidation(local, token)) {
+			try {
+				User u = registeredUser.get(userName);
+				userCredentials.remove(u);
+				registeredUser.remove(u);
+				currentValidationTokens.remove(u);
+				return true;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+		}
+		return false;
+	}
+
+	public synchronized static boolean checkUserValidation(User u, UserValidation uV) {
+		if (currentValidationTokens.contains(u)) {
+			if (currentValidationTokens.get(u).contains(uV)) {
+				for (UserValidation lV : currentValidationTokens.get(u)) {
+					if (lV.checkKey(uV.getRandKey()))
+						return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public synchronized static UserValidation getUserValidationToken(User u, String password)
+			throws InvalidUserException {
+		if (userCredentials.contains(u)) {
+			if (userCredentials.get(u).doesMatch(password)) {
+				UserValidation uV = new UserValidation();
+				if (!currentValidationTokens.contains(u))
+					currentValidationTokens.put(u, new HashSet<UserValidation>());
+				currentValidationTokens.get(u).add(uV);
+				return uV;
+			}
+		}
+		throw new InvalidUserException();
+	}
+
+	private static final class PasswordEncrypter {
+
+		public static Password createEncryptedPassword(String rawText) {
+			byte[] salt = new byte[32];
+			try {
+				SecureRandom sR = SecureRandom.getInstance("SHA1PRNG");
+				sR.nextBytes(salt);
+
+				KeySpec keySpec = new PBEKeySpec(rawText.toCharArray(), salt, 20000, 160);
+				SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+
+				String encSalt = Base64.getEncoder().encodeToString(salt);
+				String encPass = Base64.getEncoder().encodeToString(keyFactory.generateSecret(keySpec).getEncoded());
+
+				KeySpec saveKeySpec = new PBEKeySpec(rawText.toCharArray(), salt, 65536, 256);
+				return new Password(encSalt, encPass,
+						new SecretKeySpec(keyFactory.generateSecret(saveKeySpec).getEncoded(), "AES"));
+			} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return null;
+			}
+		}
 
 	}
 
-	private static final class PasswordEncoder {
-		public static char parseByte(byte b) {
-			switch (b) {
-			case 10:
-				return '0';
-			case 5:
-				return '1';
-			case 23:
-				return '2';
-			case 11:
-				return '3';
-			case 45:
-				return '4';
-			case 64:
-				return '5';
-			case 33:
-				return '6';
-			case 56:
-				return '7';
-			case 102:
-				return '8';
-			case 20:
-				return '9';
-			case 13:
-				return ':';
-			// 11 NULL CHARACTER
-			case 14:
-				return '.';
-			// 13-18 Unused Currently
-			case 127:
-				return '+';
-			case 120:
-				return '-';
-			case 4:
-				return 'A';
-			case 2:
-				return 'B';
-			case 1:
-				return 'C';
-			case 67:
-				return 'D';
-			case 87:
-				return 'E';
-			case 121:
-				return 'F';
-			case 118:
-				return 'G';
-			case 35:
-				return 'H';
-			case 89:
-				return 'I';
-			case 96:
-				return 'J';
-			case 39:
-				return 'K';
-			case 91:
-				return 'L';
-			case 47:
-				return 'M';
-			case 50:
-				return 'N';
-			case 7:
-				return 'O';
-			case 79:
-				return 'P';
-			case 80:
-				return 'Q';
-			case 3:
-				return 'R';
-			case 61:
-				return 'S';
-			case 52:
-				return 'T';
-			case 88:
-				return 'U';
-			case 76:
-				return 'V';
-			case 71:
-				return 'W';
-			case 38:
-				return 'X';
-			case 83:
-				return 'Y';
-			case 94:
-				return 'Z';
-			case 62:
-				return 'a';
-			case 75:
-				return 'b';
-			case 115:
-				return 'c';
-			case 119:
-				return 'd';
-			case 122:
-				return 'e';
-			case 116:
-				return 'f';
-			case 101:
-				return 'g';
-			case 104:
-				return 'h';
-			case 85:
-				return 'i';
-			case 66:
-				return 'j';
-			case 63:
-				return 'k';
-			case 68:
-				return 'l';
-			case 72:
-				return 'm';
-			case 90:
-				return 'n';
-			case 81:
-				return 'o';
-			case 77:
-				return 'p';
-			case 99:
-				return 'q';
-			case 55:
-				return 'r';
-			case 16:
-				return 's';
-			case 97:
-				return 't';
-			case 8:
-				return 'u';
-			case 9:
-				return 'v';
-			case 117:
-				return 'w';
-			case 126:
-				return 'x';
-			case 74:
-				return 'y';
-			case 82:
-				return 'z';
-			}
-			return '?';
+	public static final class Password implements Serializable {
+		private String salt;
+		private String encodedPassword;
+		private SecretKey secret;
+		private File secretFile = null;
+
+		public Password(String salt, String encodedPassword, SecretKey secret) {
+			this.salt = salt;
+			this.encodedPassword = encodedPassword;
+			this.secret = secret;
 		}
 
-		public static byte parseChar(char b) {
-			// TODO Swap return with value
-			switch (b) {
-			case '0':
-				return 10;
-			case '1':
-				return 5;
-			case '2':
-				return 23;
-			case '3':
-				return 11;
-			case '4':
-				return 45;
-			case '5':
-				return 65;
-			case '6':
-				return 33;
-			case '7':
-				return 56;
-			case '8':
-				return 102;
-			case '9':
-				return 20;
-			case ':':
-				return 13;
-			case '.':
-				return 14;
-			case '+':
-				return 127;
-			case '-':
-				return 120;
-			case 'A':
-				return 4;
-			case 'B':
-				return 2;
-			case 'C':
-				return 1;
-			case 'D':
-				return 67;
-			case 'E':
-				return 87;
-			case 'F':
-				return 121;
-			case 'G':
-				return 118;
-			case 'H':
-				return 35;
-			case 'I':
-				return 89;
-			case 'J':
-				return 96;
-			case 'K':
-				return 39;
-			case 'L':
-				return 91;
-			case 'M':
-				return 47;
-			case 'N':
-				return 50;
-			case 'O':
-				return 7;
-			case 'P':
-				return 79;
-			case 'Q':
-				return 80;
-			case 'R':
-				return 3;
-			case 'S':
-				return 61;
-			case 'T':
-				return 52;
-			case 'U':
-				return 88;
-			case 'V':
-				return 76;
-			case 'W':
-				return 71;
-			case 'X':
-				return 38;
-			case 'Y':
-				return 83;
-			case 'Z':
-				return 94;
-			case 'a':
-				return 62;
-			case 'b':
-				return 75;
-			case 'c':
-				return 115;
-			case 'd':
-				return 119;
-			case 'e':
-				return 122;
-			case 'f':
-				return 116;
-			case 'g':
-				return 101;
-			case 'h':
-				return 104;
-			case 'i':
-				return 85;
-			case 'j':
-				return 66;
-			case 'k':
-				return 63;
-			case 'l':
-				return 68;
-			case 'm':
-				return 72;
-			case 'n':
-				return 90;
-			case 'o':
-				return 81;
-			case 'p':
-				return 77;
-			case 'q':
-				return 99;
-			case 'r':
-				return 55;
-			case 's':
-				return 16;
-			case 't':
-				return 97;
-			case 'u':
-				return 8;
-			case 'v':
-				return 9;
-			case 'w':
-				return 117;
-			case 'x':
-				return 126;
-			case 'y':
-				return 74;
-			case 'z':
-				return 82;
-
+		public boolean doesMatch(String pass) {
+			try {
+				KeySpec keySpec = new PBEKeySpec(pass.toCharArray(), Base64.getDecoder().decode(salt), 20000, 160);
+				SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+				if (encodedPassword
+						.equals((Base64.getEncoder().encodeToString(keyFactory.generateSecret(keySpec).getEncoded()))))
+					return true;
+			} catch (Exception e) {
+				e.printStackTrace();
+				return false;
 			}
-			return 11;
+			return false;
+		}
+	}
 
+	public static final class UserValidation implements Serializable {
+		private byte[] salt;
+		private String randKey;
+		private final String encPass;
+
+		public UserValidation() {
+			String pass = null;
+			try {
+				salt = new byte[16];
+				SecureRandom sR = SecureRandom.getInstance("SHA1PRNG");
+				sR.nextBytes(salt);
+
+				byte[] randKeyBytes = new byte[24];
+				sR.nextBytes(randKeyBytes);
+
+				randKey = new String(randKeyBytes);
+
+				KeySpec keySpec = new PBEKeySpec(randKey.toCharArray(), salt, 20000, 160);
+				SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+
+				pass = Base64.getEncoder().encodeToString(keyFactory.generateSecret(keySpec).getEncoded());
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			encPass = pass;
 		}
 
-		public static byte[] parseString(String s) {
-			char[] c = s.toCharArray();
-			byte[] d = new byte[c.length];
-			for (int i = 0; i < c.length; i++) {
-				d[i] = parseChar(c[i]);
-			}
-			return d;
+		private String getRandKey() {
+			return randKey;
 		}
 
-		public static String parseByteArray(byte[] b) {
-			char[] c = new char[b.length];
-			for (int i = 0; i < b.length; i++) {
-				c[i] = parseByte(b[i]);
-			}
-			return new String(c);
-		}
+		private boolean checkKey(String key) {
+			try {
+				KeySpec keySpec = new PBEKeySpec(key.toCharArray(), salt, 20000, 160);
+				SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
 
+				String newPass = Base64.getEncoder().encodeToString(keyFactory.generateSecret(keySpec).getEncoded());
+				if (newPass.equals(encPass))
+					return true;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			return false;
+		}
 	}
 
 }

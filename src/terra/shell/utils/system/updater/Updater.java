@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.Scanner;
@@ -17,11 +18,11 @@ public final class Updater {
 
 	private static final Configuration conf = getConf();
 
-	private static final int versionID = 12182021;
-	private static final String ip = "http://repo.java-shell.com";
+	private static final String versionID = "02052022";
+	private static final String ip = "https://repo.java-shell.com";
 	private static final Logger log = LogManager.getLogger("UpdateManager");
 	private static boolean hasUpdates = false;
-	private static int remoteVersion = -1;
+	private static String remoteVersion = "";
 
 	/*
 	 * TODO General plan is to pull from an update repository, download the updated
@@ -33,11 +34,10 @@ public final class Updater {
 			return true;
 		}
 		// TODO Check for updates based on a pre-set server/repository location
-		URL versionLogURL = new URL("https://repo.java-shell.com/versionLog");
+		URL versionLogURL = new URL(ip + "/versionLog");
 		Scanner vLogIn = new Scanner(versionLogURL.openStream());
-		String remoteVersionLine = vLogIn.nextLine();
-		int remoteVersion = Integer.parseInt(remoteVersionLine);
-		if (remoteVersion != versionID) {
+		String remoteVersion = vLogIn.nextLine();
+		if (!remoteVersion.equals(versionID)) {
 			log.log("Update Available");
 			log.log("Current Version: " + versionID);
 			log.log("Remote Version: " + remoteVersion);
@@ -50,9 +50,30 @@ public final class Updater {
 		return false;
 	}
 
+	public final static boolean silentCheckForUpdates() throws IOException {
+		// TODO Check for updates based on a pre-set server/repository location
+		URL versionLogURL = new URL(ip + "/versionLog");
+		Scanner vLogIn = new Scanner(versionLogURL.openStream());
+		String remoteVersion = vLogIn.nextLine();
+		vLogIn.close();
+		if (!remoteVersion.equals(versionID)) {
+			Updater.remoteVersion = remoteVersion;
+			return true;
+		}
+		return false;
+	}
+
+	public final static String remoteVersion() {
+		return remoteVersion;
+	}
+
+	public final static String localVersion() {
+		return versionID;
+	}
+
 	public final static File downloadUpdate() throws IOException {
 		// TODO Download the latest update from a pre-set server/repository location
-		URL updateJarDownload = new URL("https://repo.java-shell.com/" + remoteVersion + ".jar");
+		URL updateJarDownload = new URL(ip + "/" + remoteVersion + ".jar");
 		File updateJar = new File(Launch.getConfD().getParent(), remoteVersion + ".jar");
 		FileOutputStream jarOut = new FileOutputStream(updateJar);
 		// Open the URL and download to the file location

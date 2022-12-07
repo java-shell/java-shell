@@ -55,13 +55,13 @@ public class ModuleList extends Command {
 
 	@Override
 	public ArrayList<String> getAliases() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
 	@Override
 	public boolean isBlocking() {
-		// TODO Auto-generated method stub
+		 
 		return true;
 	}
 

@@ -13,43 +13,43 @@ public class CurrentDir extends Command {
 
 	@Override
 	public String getName() {
-		// TODO Auto-generated method stub
+		 
 		return "crd";
 	}
 
 	@Override
 	public String getVersion() {
-		// TODO Auto-generated method stub
+		 
 		return "0.1";
 	}
 
 	@Override
 	public String getAuthor() {
-		// TODO Auto-generated method stub
+		 
 		return "D.S";
 	}
 
 	@Override
 	public String getOrg() {
-		// TODO Auto-generated method stub
+		 
 		return "T3RRA";
 	}
 
 	@Override
 	public boolean isBlocking() {
-		// TODO Auto-generated method stub
+		 
 		return true;
 	}
 
 	@Override
 	public ArrayList<String> getAliases() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
 	@Override
 	public ArrayList<Permissions> getPerms() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 

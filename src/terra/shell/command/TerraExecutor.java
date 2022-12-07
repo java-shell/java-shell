@@ -18,7 +18,7 @@ public class TerraExecutor {
 	private static ByteClassLoader bcl = Launch.getClassLoader();
 
 	public String getName() {
-		// TODO Auto-generated method stub
+		 
 		return "TE";
 	}
 

@@ -102,7 +102,7 @@ public abstract class Command extends JProcess {
 	 * @param args
 	 *            Arguments passed to this command
 	 * @param executor
-	 *            Terminal which wil execute this command
+	 *            Terminal which will execute this command
 	 */
 	public void addArgs(String[] args, Terminal executor) {
 		this.args = args;

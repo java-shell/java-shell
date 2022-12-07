@@ -12,7 +12,7 @@ public class DummyType implements EventType {
 
 	@Override
 	public String type() {
-		// TODO Auto-generated method stub
+		 
 		return "DummyType";
 	}
 
@@ -30,7 +30,7 @@ public class DummyType implements EventType {
 		}
 
 		public String getCreator() {
-			// TODO Auto-generated method stub
+			 
 			return "Dummy";
 		}
 

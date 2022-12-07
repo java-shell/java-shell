@@ -14,49 +14,49 @@ public class RunTX extends BasicCommand {
 
 	@Override
 	public String getName() {
-		// TODO Auto-generated method stub
+		 
 		return "tx";
 	}
 
 	@Override
 	public String getVersion() {
-		// TODO Auto-generated method stub
+		 
 		return "2.0";
 	}
 
 	@Override
 	public String getAuthor() {
-		// TODO Auto-generated method stub
+		 
 		return "D.S.";
 	}
 
 	@Override
 	public String getOrg() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
 	@Override
 	public boolean isBlocking() {
-		// TODO Auto-generated method stub
+		 
 		return true;
 	}
 
 	@Override
 	public ArrayList<String> getAliases() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
 	@Override
 	public ArrayList<Permissions> getPerms() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
 	@Override
 	public boolean start() {
-		// TODO Auto-generated method stub
+		 
 		if (getNumArgs() < 1) {
 			getLogger().log("Not enough arguments");
 			return false;

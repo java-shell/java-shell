@@ -54,7 +54,9 @@ public class ByteClassLoader extends URLClassLoader {
 	public Class<?> getClass(byte[] b) {
 		Class<?> tmp = defineClass(b, 0, b.length);
 		resolveClass(tmp);
-		loaded.put(tmp.getName().replace('.', '/') + ".class", new ClassData(b, generateCRC(b), tmp));
+		synchronized (loaded) {
+			loaded.put(tmp.getName().replace('.', '/') + ".class", new ClassData(b, generateCRC(b), tmp));
+		}
 		return tmp;
 	}
 
@@ -66,25 +68,28 @@ public class ByteClassLoader extends URLClassLoader {
 	 * @return
 	 */
 	public Class<?> getClass(String name, byte[] b) {
-		if (loaded.containsKey(name)) {
-			if ((loaded.get(name).getChk() != generateCRC(b))) {
-				// FIXME Remove Replaceable annotation, cannot replace an already loaded class
-				// without first destroying its classloader
-				Class<?> pl = loaded.get(name).getClassObject();
-				if (pl.isAnnotationPresent(Replaceable.class)) {
-					if (pl.getAnnotation(Replaceable.class).replaceable()) {
-						// Replace the pre loaded class with a new one
+		synchronized (loaded) {
+			if (loaded.containsKey(name)) {
+				if ((loaded.get(name).getChk() != generateCRC(b))) {
+					// FIXME Remove Replaceable annotation, cannot replace an already loaded class
+					// without first destroying its classloader
+					Class<?> pl = loaded.get(name).getClassObject();
+					if (pl.isAnnotationPresent(Replaceable.class)) {
+						if (pl.getAnnotation(Replaceable.class).replaceable()) {
+							// Replace the pre loaded class with a new one
+						}
 					}
+					return pl;
+				} else {
+					return loaded.get(name).getClass();
 				}
-				return pl;
-			} else {
-				return loaded.get(name).getClass();
 			}
+
+			Class<?> tmp = defineClass(name, b, 0, b.length);
+			resolveClass(tmp);
+			loaded.put(tmp.getName().replace('.', '/') + ".class", new ClassData(b, generateCRC(b), tmp));
+			return tmp;
 		}
-		Class<?> tmp = defineClass(name, b, 0, b.length);
-		resolveClass(tmp);
-		loaded.put(tmp.getName().replace('.', '/') + ".class", new ClassData(b, generateCRC(b), tmp));
-		return tmp;
 	}
 
 	/**
@@ -97,44 +102,71 @@ public class ByteClassLoader extends URLClassLoader {
 	 * @return
 	 */
 	public Class<?> getClass(String name, String pkg, byte[] b) {
-		if (loaded.containsKey(name)) {
-			if ((loaded.get(name).getChk() != generateCRC(b))) {
-				LogManager.write("GOT DUPLICATE CLASS NAME BUT UNIQUE CHKSUM, RETURNING ALREADY LOADED VERSION");
-				return loaded.get(name).getClassObject();
-			} else {
-				return loaded.get(name).getClassObject();
+		synchronized (loaded) {
+			if (loaded.containsKey(name)) {
+				if ((loaded.get(name).getChk() != generateCRC(b))) {
+					LogManager.write("GOT DUPLICATE CLASS NAME BUT UNIQUE CHKSUM, RETURNING ALREADY LOADED VERSION");
+					return loaded.get(name).getClassObject();
+				} else {
+					return loaded.get(name).getClassObject();
+				}
 			}
-		}
-		try {
-			definePackage(pkg, "", "", "", "", "", "", null);
-		} catch (IllegalArgumentException e) {
-		}
-		try {
-			Class<?> tmp = defineClass(name, b, 0, b.length);
-			resolveClass(tmp);
-			loaded.put(tmp.getName().replace('.', '/') + ".class", new ClassData(b, generateCRC(b), tmp));
-			return tmp;
-		} catch (LinkageError e) {
-			LogManager.write("GOT LINKAGEERROR: " + e.getLocalizedMessage() + "\n");
-			LogManager.write("ATTEMPTING TO LOAD PRE-LOADED VERSION\n");
-			Class<?> preLoad = null;
 			try {
-				preLoad = loadClass(name);
-			} catch (Exception e1) {
-				throw (e);
+				definePackage(pkg, "", "", "", "", "", "", null);
+			} catch (IllegalArgumentException e) {
+				e.printStackTrace();
 			}
-			if (preLoad == null) {
-				throw (e);
+			try {
+				Class<?> tmp = defineClass(name, b, 0, b.length);
+				resolveClass(tmp);
+				loaded.put(tmp.getName().replace('.', '/') + ".class", new ClassData(b, generateCRC(b), tmp));
+				return tmp;
+			} catch (LinkageError e) {
+				LogManager.write("GOT LINKAGEERROR: " + e.getLocalizedMessage() + "\n");
+				LogManager.write("ATTEMPTING TO LOAD PRE-LOADED VERSION\n");
+				Class<?> preLoad = null;
+				try {
+					preLoad = loadClass(name);
+				} catch (Exception e1) {
+					e.printStackTrace();
+					throw (e);
+				}
+				if (preLoad == null) {
+					e.printStackTrace();
+					LogManager.write("PRELOAD_NULL");
+					throw (e);
+				}
+				return preLoad;
 			}
-			return preLoad;
 		}
+	}
+
+	public Class<?> retrieveClass(String name) {
+		synchronized (loaded) {
+			if (loaded.containsKey(name))
+				return loaded.get(name).getClass();
+		}
+		if (getParent() != null && getParent() instanceof ByteClassLoader) {
+			return ((ByteClassLoader) getParent()).retrieveClass(name);
+		}
+		return null;
+	}
+
+	@Override
+	public Class<?> loadClass(String name) throws ClassNotFoundException {
+		Class<?> cl = retrieveClass(name);
+		if (cl != null)
+			return cl;
+		return super.loadClass(name);
 	}
 
 	@Override
 	public InputStream getResourceAsStream(String name) {
 		LogManager.out.println(name);
-		if (loaded.containsKey(name)) {
-			return new ByteArrayInputStream(loaded.get(name).getData());
+		synchronized (loaded) {
+			if (loaded.containsKey(name)) {
+				return new ByteArrayInputStream(loaded.get(name).getData());
+			}
 		}
 		return super.getResourceAsStream(name);
 	}

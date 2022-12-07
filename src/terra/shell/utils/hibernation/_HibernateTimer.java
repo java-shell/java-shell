@@ -19,7 +19,7 @@ public class _HibernateTimer extends JProcess {
 
 	@Override
 	public String getName() {
-		// TODO Auto-generated method stub
+		 
 		return "HT";
 	}
 

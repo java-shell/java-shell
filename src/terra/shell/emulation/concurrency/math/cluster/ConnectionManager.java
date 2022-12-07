@@ -8,10 +8,13 @@ import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -38,6 +41,7 @@ import terra.shell.config.Configuration;
 import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
+import terra.shell.modules.ModuleManagement;
 import terra.shell.utils.JProcess;
 import terra.shell.utils.ReturnValue;
 import terra.shell.utils.system.JSHClassLoader;
@@ -65,14 +69,12 @@ public final class ConnectionManager {
 	 */
 
 	private JSHClassLoader loader;
-	// TODO Categorize Classloaders by UUID in order to allow deloading of classes
-	// by removing the classloader (Possibly serialVersionUID??
-	// TODO Need to reserve UUID slot when passive load call is received, should set
-	// UUID upon request, not instantiation
 	private Hashtable<Long, JSHClassLoader> loadersByUUID = new Hashtable<Long, JSHClassLoader>();
 	private HashSet<String> localAddresses = new HashSet<String>();
+	private HashSet<ConnectionListener> conListeners = new HashSet<ConnectionListener>();
 
 	private static Queue<Node> nodes = new PriorityQueue<Node>();
+	private static HashSet<String> nodeAddresses = new HashSet<String>();
 	private Logger log = LogManager.getLogger("ClusterManager");
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
@@ -80,10 +82,11 @@ public final class ConnectionManager {
 			ipScanRangeMax = 253, handshakeTimeout = 200, nodeCheckInterval = 60;
 	private Timer checkNodesTimer;
 
+	private boolean multicastServiceScan;
+
 	// TODO
 	// Finish setting up defaults
 	// Finish LocalServer clientHandler
-	// Create service scan *
 	/**
 	 * Configure ConnectionManager, INIT LocalServer, run serviceScan
 	 */
@@ -106,17 +109,18 @@ public final class ConnectionManager {
 			conf.setValue("ipScanRangeMax", 253);
 			conf.setValue("handshakeTimeout", 200);
 			conf.setValue("nodeCheckInterval", 60);
+			conf.setValue("multicastServiceScanEnable", "true");
 			// TODO Finish setting up Default values
 		} else {
 			// If conf exists, gather configuration options
 			port = conf.getValueAsInt("port");
 			ipFormat = (String) conf.getValue("ipformat");
-			ipFormat.substring(0, ipFormat.length() - 2);
 			activeProcessLimit = conf.getValueAsInt("activeProcessLimit");
 			passiveProcessLimit = conf.getValueAsInt("passiveProcessLimit");
 			connectionLimit = conf.getValueAsInt("connectionLimit");
 			handshakeTimeout = conf.getValueAsInt("handshakeTimeout");
 			nodeCheckInterval = conf.getValueAsInt("nodeCheckInterval");
+			multicastServiceScan = Boolean.parseBoolean((String) conf.getValue("multicastServiceScanEnable"));
 
 			int ipScanMin = conf.getValueAsInt("ipScanRangeMin");
 			int ipScanMax = conf.getValueAsInt("ipScanRangeMax");
@@ -139,7 +143,7 @@ public final class ConnectionManager {
 			log.log("Stopping Connection Manager...");
 			return;
 		}
-		ls.start();
+		ls.run();
 
 		// Scan for other servers on the LAN
 		try {
@@ -197,9 +201,17 @@ public final class ConnectionManager {
 			// Select top Node based on Node.compareTo
 			// Compares Nodes based on overall ping, as well as time since last usage
 			Node n = nodes.poll();
+			if (n == null)
+				return false;
 			boolean success = ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
-			n.updatePing();
-			n.lastUsed = System.currentTimeMillis();
+			try {
+				n.updatePing();
+				n.lastUsed = System.currentTimeMillis();
+			} catch (Exception e1) {
+				log.debug("Node " + n.getIPv4().toString() + " failed in queue stage, removing node...");
+				nodeAddresses.remove(n.getIPv4().getHostAddress());
+				return queueProcess(p, out, in);
+			}
 			nodes.add(n);
 			if (!success)
 				queueProcess(p, out, in);
@@ -221,7 +233,6 @@ public final class ConnectionManager {
 	public boolean sendToAll(final JProcess p, final OutputStream out, final InputStream in) {
 		for (final Node n : nodes) {
 			JProcess pr = new JProcess() {
-
 				@Override
 				public String getName() {
 					return "SendProc";
@@ -241,6 +252,24 @@ public final class ConnectionManager {
 			pr.run();
 		}
 		return true;
+	}
+
+	/**
+	 * Register a ConnectionListener to trigger when a node is connected
+	 * 
+	 * @param listener
+	 */
+	public void registerConnectionListener(ConnectionListener listener) {
+		conListeners.add(listener);
+	}
+
+	/**
+	 * Remove a ConnectionListener from the event trigger list
+	 * 
+	 * @param listener
+	 */
+	public void unregisterConnectionListener(ConnectionListener listener) {
+		conListeners.remove(listener);
 	}
 
 	/**
@@ -268,7 +297,7 @@ public final class ConnectionManager {
 		// Check for valid IP
 		if (ip == null)
 			return -1;
-		log.debug("Sending PING request", 2);
+		log.debug("Sending PING request: " + ip, 2);
 		Socket s = new Socket();
 		// Connect to Node host
 		s.connect(new InetSocketAddress(ip, port), handshakeTimeout);
@@ -314,9 +343,75 @@ public final class ConnectionManager {
 	 */
 	public void serviceScan() throws IOException {
 		log.log("Running service scan...");
+		if (!multicastServiceScan)
+			unicastServiceScan();
+		else
+			multicastServiceScan();
+	}
 
+	/**
+	 * Scan for Nodes on the LAN utilizing a MulticastSocket, by setting continually
+	 * listening for new "Here I Am" packets (Recommended Method)
+	 * 
+	 * @throws IOException
+	 */
+	private void multicastServiceScan() throws IOException {
+		log.log("Starting Mutlicast Service Scan on 229.245.50.2:5963");
+		InetAddress mCastAddress = InetAddress.getByName("229.245.50.2");
+		final MulticastSocket mCast = new MulticastSocket(5963);
+		final DatagramSocket dSock = new DatagramSocket();
+		mCast.joinGroup(mCastAddress);
+		DatagramPacket hereIAm = new DatagramPacket(new byte[] { 4, 6, 8 }, 3, mCastAddress, 5963);
+		dSock.send(hereIAm);
+		JProcess multicastServiceScanProcess = new JProcess() {
+
+			@Override
+			public String getName() {
+				return "MulticastServiceScanProcess";
+			}
+
+			@Override
+			public boolean start() {
+				while (true) {
+					byte[] buf = new byte[3];
+					DatagramPacket recv = new DatagramPacket(buf, 3);
+					try {
+						mCast.receive(recv);
+						log.debug("Received Multicast Packet: " + recv.getAddress().getHostAddress());
+						// Here I Am packet:
+						if (buf[0] == 4 && buf[1] == 6 && buf[2] == 8) {
+							InetAddress recieved = recv.getAddress();
+							if (localAddresses.contains(recieved.getHostAddress())) {
+								continue;
+							}
+							addNode((Inet4Address) recv.getAddress());
+						}
+						// Leaving packet:
+						if (buf[0] == 9 && buf[1] == 9 && buf[2] == 9) {
+							// TODO Remove node from "nodes"
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+						mCast.close();
+						return false;
+					}
+				}
+			}
+
+		};
+		multicastServiceScanProcess.run();
+	}
+
+	/**
+	 * Scan for Nodes on the Network by individually connecting to every IP address
+	 * in a given range, and attempting to complete a handshake with each
+	 * 
+	 * @throws IOException
+	 */
+	private void unicastServiceScan() throws IOException {
+		log.log("Starting unicast scan on range " + ipFormat.replaceAll("X", ipScanRangeMin + "-" + ipScanRangeMax));
 		String ip = ipFormat;
-		// Scan all IP's from range 1-253
+		// Scan all IP's in range
 		InetSocketAddress rollingAdd;
 		for (int i = ipScanRangeMin; i <= ipScanRangeMax; i++) {
 			final InetSocketAddress rolling = new InetSocketAddress(ip.replace("X", "" + i), port);
@@ -351,14 +446,23 @@ public final class ConnectionManager {
 	 * @throws IOException
 	 */
 	public boolean addNode(Inet4Address ip) throws UnknownHostException, IOException {
+		if (nodeAddresses.contains(ip.getHostAddress()))
+			return true;
+		nodeAddresses.add(ip.getHostAddress());
 		// Ping the server to check if it exists
 		long ping = ping(ip);
 		if (ping != -1) {
 			// Add the server as Node object
 			nodes.add(new Node(ip, ping));
+			triggerConnectionEvent(ip);
 			return true;
 		}
 		return false;
+	}
+
+	private void triggerConnectionEvent(InetAddress ip) {
+		for (ConnectionListener list : conListeners)
+			list.connectionEvent(ip);
 	}
 
 	/**
@@ -433,6 +537,7 @@ public final class ConnectionManager {
 						// Check if the Node is reachable
 						if (!n.getIPv4().isReachable(200)) {
 							nodes.remove(n);
+							triggerDisconnectEvent(n.ip);
 							return;
 						}
 						// If the Node is reachable, and it has been 5 minutes or more since the last
@@ -441,6 +546,8 @@ public final class ConnectionManager {
 							long ping = ping(n.getIPv4());
 							if (ping == -1) {
 								nodes.remove(n);
+								nodeAddresses.remove(n.ip.getHostAddress());
+								triggerDisconnectEvent(n.ip);
 							} else {
 								n.lastPinged = System.currentTimeMillis();
 								n.ping = ping;
@@ -448,12 +555,19 @@ public final class ConnectionManager {
 						}
 					} catch (IOException e) {
 						nodes.remove(n);
+						nodeAddresses.remove(n.ip.getHostAddress());
+						triggerDisconnectEvent(n.ip);
 					}
 				}
 
 			}).start();
 		}
 
+	}
+
+	private void triggerDisconnectEvent(InetAddress ip) {
+		for (ConnectionListener list : conListeners)
+			list.disconnectionEvent(ip);
 	}
 
 	/**
@@ -583,7 +697,9 @@ public final class ConnectionManager {
 						loader = loadersByUUID.get(chkSum);
 					} else {
 						out.println("NONEXIST");
-						loader = new JSHClassLoader(new URL[] { new URL("file:///modules") });
+						loader = new JSHClassLoader(
+								new URL[] { new URL("file://" + Launch.getConfD().getParent() + "/modules/") },
+								ModuleManagement.getLoader());
 						loadersByUUID.put(chkSum, loader);
 						log.debug("Realizing Quantized class...");
 						// Load class from bytes
@@ -866,7 +982,8 @@ public final class ConnectionManager {
 			String next = sc.nextLine();
 			if (!next.equals("CHANNELTRANSFER")) {
 				throw new IOException(
-						"Socket not prepared for Channel Transfer, or got out of sync with remote resources");
+						"Socket not prepared for Channel Transfer, or got out of sync with remote resources, got: "
+								+ next);
 			}
 			out.println("CHANNELREADY");
 			int size = sc.nextInt();
@@ -1118,12 +1235,6 @@ public final class ConnectionManager {
 				return null;
 			}
 
-			// byte[] cBytes = new byte[cSize];
-			// Receive Class
-			// for (int i = 0; i < cSize; i++) {
-			// cBytes[i] = (byte) sc.nextInt();
-			// }
-			// sc.nextLine();
 			log.debug("Realizing Quantized class...");
 			// Load class from bytes
 			// Save 'c' for a bit so GC doesn't remove the class from mem
@@ -1179,20 +1290,17 @@ public final class ConnectionManager {
 	private class Node implements Comparable<Node> {
 		private long ping;
 		private Inet4Address ip;
-		private Socket s;
 		private long lastUsed, lastPinged;
 
 		@SuppressWarnings("unused")
 		public Node(Inet4Address ip) throws UnknownHostException, IOException {
 			this.ip = ip;
-			s = new Socket(ip.getHostAddress(), port);
 			updatePing();
 			lastUsed = System.currentTimeMillis();
 		}
 
 		public Node(Inet4Address ip, boolean doPing) throws UnknownHostException, IOException {
 			this.ip = ip;
-			s = new Socket(ip.getHostAddress(), port);
 			if (doPing)
 				updatePing();
 			lastUsed = System.currentTimeMillis();
@@ -1200,7 +1308,6 @@ public final class ConnectionManager {
 
 		public Node(Inet4Address ip, long ping) throws UnknownHostException, IOException {
 			this.ip = ip;
-			s = new Socket(ip.getHostAddress(), port);
 			this.ping = ping;
 			lastUsed = System.currentTimeMillis();
 			lastPinged = System.currentTimeMillis();
@@ -1208,7 +1315,7 @@ public final class ConnectionManager {
 
 		@SuppressWarnings("unused")
 		public Node(Socket s) throws IOException {
-			this.s = s;
+			this.ip = (Inet4Address) s.getInetAddress();
 			updatePing();
 			lastUsed = System.currentTimeMillis();
 		}
@@ -1217,7 +1324,6 @@ public final class ConnectionManager {
 		public Node(Inet4Address ip, int ping) throws UnknownHostException, IOException {
 			this.ping = ping;
 			this.ip = ip;
-			s = new Socket(ip.getHostAddress(), port);
 			lastUsed = System.currentTimeMillis();
 		}
 
@@ -1277,7 +1383,7 @@ public final class ConnectionManager {
 		}
 
 		public String getIp() {
-			return n.ip.toString();
+			return n.ip.getHostAddress();
 		}
 
 		public long lastUsed() {

@@ -13,7 +13,12 @@ import java.util.UUID;
 
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
+import terra.shell.utils.perms.PermittedThread;
 import terra.shell.utils.system.JSHProcesses;
+import terra.shell.utils.system.user.InvalidUserException;
+import terra.shell.utils.system.user.User;
+import terra.shell.utils.system.user.UserManagement;
+import terra.shell.utils.system.user.UserManagement.UserValidation;
 
 /**
  * JProcess is a resource class which implements a Thread as its "heart". The
@@ -31,7 +36,7 @@ public abstract class JProcess implements Serializable {
 
 	private static final long serialVersionUID = -4944113269698016157L;
 	private transient boolean stop, isGoing = true, suspend, firstInit = true;
-	private transient Thread t = null;
+	private transient PermittedThread t = null;
 	protected UUID u;
 	private transient UUID sUID;
 	private transient boolean uuidset;
@@ -43,9 +48,27 @@ public abstract class JProcess implements Serializable {
 	private transient String name = null;
 	private boolean canBeSerialized = false;
 	private Inet4Address origin;
+	private User user = null;
 
 	public JProcess() {
+		try {
+			Thread curThread = Thread.currentThread();
+			if (curThread instanceof PermittedThread) {
+				user = ((PermittedThread) curThread).retrieveUser();
+			}
+		} catch (Exception e) {
+			user = null;
+		}
 		u = JSHProcesses.getValidUUID();
+		init();
+	}
+
+	public JProcess(User u, UserValidation uv) throws InvalidUserException {
+		if (!UserManagement.checkUserValidation(u, uv)) {
+			throw new InvalidUserException();
+		}
+		user = u;
+		this.u = JSHProcesses.getValidUUID();
 		init();
 	}
 
@@ -180,7 +203,7 @@ public abstract class JProcess implements Serializable {
 		stop = false;
 		isGoing = true;
 		// Create a new thread in which to run this process
-		t = new Thread(new Runnable() {
+		t = new PermittedThread(new Runnable() {
 			public void run() {
 				// Add the process to the process manager (JSHProcesses)
 				JSHProcesses.addProcess(me);
@@ -194,59 +217,37 @@ public abstract class JProcess implements Serializable {
 					e.printStackTrace();
 				}
 				// Cleanup
-				stop();
-				t.interrupt();
+				try {
+					// If the process has completed, run the stop procedure from the Process Manager
+
+					// TODO Check for Asynchronous ReturnValue, if exists, then zombie the process
+					// (Keep in JSHProcesses) until ReturnValue needs to be evaluated
+					terra.shell.utils.system.ReturnType ret = terra.shell.utils.system.ReturnType.VOID;
+					if (me.getClass().isAnnotationPresent(JProcess.ReturnType.class)) {
+						ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
+					}
+					if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
+						log.debug("Process " + getName() + " not marked ASYNC, removing");
+						JSHProcesses.stopProcess(me);
+						// Cleanup
+						LogManager.removeLogger(log);
+						sUID = null;
+						halt();
+					} else {
+						log.debug("Not halting process " + getName() + " as process is marked ASYNC");
+					}
+				} catch (Exception e) {
+					LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
+					e.printStackTrace();
+				}
 				isGoing = false;
 				stop = true;
 
 				return;
 			}
-		});
+		}, user);
 		t.setName(getName());
-		try {
-			// Run the thread which contains the task to be executed
-			t.start();
-			boolean suspended = false;
-			// Simple process monitor
-			while (!t.isInterrupted() && !stop && isGoing) {
-				// Check every 20ms if the process is either suspended, or stopped
-				Thread.sleep(20);
-				if (suspend & !suspended) {
-					t.wait();
-					suspended = true;
-				} else {
-					if (!suspend & suspended) {
-						t.notify();
-						suspended = false;
-					}
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		try {
-			// If the process has completed, run the stop procedure from the Process Manager
-
-			// TODO Check for Asynchronous ReturnValue, if exists, then zombie the process
-			// (Keep in JSHProcesses) until ReturnValue needs to be evaluated
-			terra.shell.utils.system.ReturnType ret = terra.shell.utils.system.ReturnType.VOID;
-			if (me.getClass().isAnnotationPresent(JProcess.ReturnType.class)) {
-				ret = me.getClass().getAnnotation(JProcess.ReturnType.class).getReturnType();
-			}
-			if (ret != terra.shell.utils.system.ReturnType.ASYNCHRONOUS) {
-				log.debug("Process " + getName() + " not marked ASYNC, removing");
-				JSHProcesses.stopProcess(me);
-				// Cleanup
-				LogManager.removeLogger(log);
-				sUID = null;
-				halt();
-			} else {
-				log.debug("Not halting process " + getName() + " as process is marked ASYNC");
-			}
-		} catch (Exception e) {
-			LogManager.out.println("[JSHPM] Unable to deregister Logger for " + getName());
-			e.printStackTrace();
-		}
+		t.start();
 
 		return true;
 
@@ -267,7 +268,7 @@ public abstract class JProcess implements Serializable {
 		if (!holdup) {
 			s = null;
 		}
-		t = new Thread(new Runnable() {
+		t = new PermittedThread(new Runnable() {
 			public void run() {
 				JSHProcesses.addProcess(me);
 				try {
@@ -302,7 +303,7 @@ public abstract class JProcess implements Serializable {
 
 				return;
 			}
-		});
+		}, user);
 		t.setName(getName());
 		try {
 			t.start();

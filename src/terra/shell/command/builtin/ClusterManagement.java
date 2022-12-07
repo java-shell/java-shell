@@ -26,37 +26,37 @@ public class ClusterManagement extends BasicCommand {
 
 	@Override
 	public String getVersion() {
-		// TODO Auto-generated method stub
+		 
 		return "1.2";
 	}
 
 	@Override
 	public String getAuthor() {
-		// TODO Auto-generated method stub
+		 
 		return "D.S.";
 	}
 
 	@Override
 	public String getOrg() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
 	@Override
 	public boolean isBlocking() {
-		// TODO Auto-generated method stub
+		 
 		return true;
 	}
 
 	@Override
 	public ArrayList<String> getAliases() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 
 	@Override
 	public ArrayList<Permissions> getPerms() {
-		// TODO Auto-generated method stub
+		 
 		return null;
 	}
 

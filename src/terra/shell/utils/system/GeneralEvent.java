@@ -14,7 +14,7 @@ public class GeneralEvent implements Event {
 
 	@Override
 	public String getCreator() {
-		// TODO Auto-generated method stub
+		 
 		return type;
 	}
 	

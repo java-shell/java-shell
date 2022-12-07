@@ -24,7 +24,6 @@ import terra.shell.command.builtin.Chdir;
 import terra.shell.command.builtin.Clear;
 import terra.shell.command.builtin.ClusterManagement;
 import terra.shell.command.builtin.CmdHistory;
-import terra.shell.command.builtin.Compile;
 import terra.shell.command.builtin.Copy;
 import terra.shell.command.builtin.Dir;
 import terra.shell.command.builtin.Export;
@@ -38,13 +37,11 @@ import terra.shell.command.builtin.PWD;
 import terra.shell.command.builtin.Print;
 import terra.shell.command.builtin.ReloadCommands;
 import terra.shell.command.builtin.RunLocal;
-import terra.shell.command.builtin.RunTX;
 import terra.shell.command.builtin.UnloadModule;
 import terra.shell.config.Configuration;
 import terra.shell.emulation.concurrency.math.cluster.ConnectionManager;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
-import terra.shell.modules.ModuleEvent;
 import terra.shell.modules.ModuleManagement;
 import terra.shell.utils.keys.DummyListener;
 import terra.shell.utils.keys.DummyType;
@@ -59,6 +56,8 @@ import terra.shell.utils.system.EventManager;
 import terra.shell.utils.system.GeneralVariable;
 import terra.shell.utils.system.JSHClassLoader;
 import terra.shell.utils.system.Variables;
+import terra.shell.utils.system.user.UserManagement;
+import terra.shell.utils.system.user.UserManagement.UserValidation;
 
 /**
  * Launches JSH, Launch Initialization is completed in Stages, and at each
@@ -82,6 +81,8 @@ public class Launch {
 	private static String fPrefix = "";
 	private static Configuration launchConf;
 	private static ConnectionManager clusterManager;
+	private static String[] ignoredConfigExtensions = { ".jar", ".lib", ".so", ".dylib", ".png", ".jpg", ".jpeg",
+			".gif", ".fst", ".dubm", ".mdl", ".carpa" };
 
 	static {
 		try {
@@ -117,22 +118,6 @@ public class Launch {
 
 		// Begin Shell init
 		log.log("Starting shell!");
-		// Native lib for direct keyboard entry, only works on EVDEV systems
-		File lib = new File("/lib/_JSHIN.so");
-		if (lib.exists()) {
-			System.load("/lib/_JSHIN.so");
-		} else {
-			lib = new File("/usr/lib/_JSHIN.so");
-			if (lib.exists()) {
-				System.load("/usr/lib/_JSHIN.so");
-			} else {
-				try {
-					throw new FileNotFoundException();
-				} catch (Exception e) {
-					log.log("_JSHIN.so not found in any library locations!");
-				}
-			}
-		}
 		// Redirect standard I/O
 		try {
 			if (!isRoot) {
@@ -217,6 +202,8 @@ public class Launch {
 			e.printStackTrace();
 		}
 
+		UserManagement.init();
+
 		// Register event types
 		EventManager.registerEvType("Dummy");
 		EventManager.registerListener(new DummyListener(), "Dummy");
@@ -257,6 +244,9 @@ public class Launch {
 			Terminal t = new Terminal();
 			log.log(t.getGOutputStream().toString());
 			t.run();
+		} else {
+			log.debug("Terminal disabled in settings, invoking INIT_COMPLETION");
+			EventManager.invokeEvent(new InitEvent(InitStage.INIT_COMPLETION));
 		}
 		// Keep Main thread alive
 		while (keepergone)
@@ -278,8 +268,8 @@ public class Launch {
 		CmdHistory cmdhis = new CmdHistory();
 		cmds.put(cmdhis.getName(), cmdhis);
 		log.log("Loaded embedded command: cmdhis");
-		Compile com = new Compile();
-		cmds.put(com.getName(), com);
+		// Compile com = new Compile();
+		// cmds.put(com.getName(), com);
 		log.log("Loaded embedded command: compile");
 		Copy cp = new Copy();
 		cmds.put(cp.getName(), cp);
@@ -315,9 +305,9 @@ public class Launch {
 		LSCMD lscmd = new LSCMD();
 		cmds.put(lscmd.getName(), lscmd);
 		log.log("Loaded embedded command: " + lscmd.getName());
-		RunTX rtx = new RunTX();
-		cmds.put(rtx.getName(), rtx);
-		log.log("Loaded embedded command: " + rtx.getName());
+		// RunTX rtx = new RunTX();
+		// cmds.put(rtx.getName(), rtx);
+		// log.log("Loaded embedded command: " + rtx.getName());
 		ClusterManagement cm = new ClusterManagement();
 		cmds.put(cm.getName(), cm);
 		log.log("Loaded embedded command: " + cm.getName());
@@ -367,15 +357,35 @@ public class Launch {
 				return;
 			}
 		}
+		loadConfigsRecursively(confD);
+	}
+
+	private static void loadConfigsRecursively(File parent) {
 		// Check that confD is a dir, if not, do nothing
-		if (!confD.isDirectory())
+		if (!parent.isDirectory())
 			return;
 		// Load files from confD
-		File[] cf = confD.listFiles();
+		File[] cf = parent.listFiles();
 		for (int i = 0; i < cf.length; i++) {
 			// Create Configuration object wrappers for conf files
-			if (!cf[i].isDirectory())
-				confs.put(cf[i].getName(), new Configuration(cf[i]));
+			if (!cf[i].isDirectory()) {
+				if (cf[i].getName().lastIndexOf(".") - 1 > 0) {
+					String fileExtension = cf[i].getName().substring(cf[i].getName().lastIndexOf(".") - 1);
+					for (String badExtension : ignoredConfigExtensions) {
+						if (fileExtension.equalsIgnoreCase(badExtension))
+							continue;
+					}
+				}
+				try {
+					String confName = cf[i].getAbsolutePath().substring(cf[i].getAbsolutePath().indexOf("config/") + 7);
+					confs.put(confName, new Configuration(cf[i]));
+					log.debug("Added configuration: " + confName);
+				} catch (Exception e) {
+					log.err("Not a configuration file: " + cf[i].getName());
+				}
+			} else {
+				loadConfigsRecursively(cf[i]);
+			}
 		}
 	}
 
@@ -477,7 +487,7 @@ public class Launch {
 					Command cmd = null;
 					try {
 						cmd = (Command) classtmp.newInstance();
-						cmds.put(cmd.getName(), cmd);
+						registerCommand(cmd.getName(), cmd);
 						log.log("Command loaded: " + cmd.getName());
 						final ArrayList<String> al = cmd.getAliases();
 						if (al != null) {
@@ -549,7 +559,7 @@ public class Launch {
 			// Instantiate command, add to Command list
 			try {
 				Command c = (Command) loader.getClass(file).newInstance();
-				cmds.put(c.getName(), c);
+				registerCommand(c.getName(), c);
 				log.log("Command Loaded: " + c.getName());
 				// Catch exceptions, and continue to next iteration
 			} catch (IllegalAccessException e) {
@@ -651,7 +661,31 @@ public class Launch {
 	}
 
 	/**
+	 * Register a command if one is not already registered under that alias
+	 * 
+	 * @param cmd String used to call command
+	 * @param c   Command to be executed
+	 * @return True if the command is properly registered, False if the command has
+	 *         been previously registered
+	 */
+	public static boolean registerCommand(String cmd, Command c) {
+		if (cmds.containsKey(cmd)) {
+			return false;
+		}
+		cmds.put(cmd, c);
+		log.debug("Registered command " + cmd);
+		return true;
+	}
+
+	// TODO Allow cmd replacement via User account lock
+	public static boolean registerCommand(String cmd, Command c, UserValidation token) {
+		cmds.put(cmd, c);
+		return true;
+	}
+
+	/**
 	 * Initialization Event wrapper
+	 * 
 	 * @author schirripad@moravian.edu
 	 *
 	 */
@@ -676,6 +710,7 @@ public class Launch {
 
 	/**
 	 * Initialization Stages
+	 * 
 	 * @author schirripad@moravian.edu
 	 *
 	 */
