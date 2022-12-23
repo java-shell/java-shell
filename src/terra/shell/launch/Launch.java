@@ -68,7 +68,7 @@ import terra.shell.utils.system.user.UserManagement.UserValidation;
  */
 public class Launch {
 	private static Logger log = LogManager.getLogger("KERNEL");
-	private static boolean doHib = false;
+	private static boolean doHib = false; 
 	private static boolean doTerm = true;
 	private static JSHClassLoader loader;
 	private static _Listener list;

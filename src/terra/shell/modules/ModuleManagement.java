@@ -112,7 +112,8 @@ public final class ModuleManagement {
 									while (entries.hasMoreElements()) {
 										JarEntry el = entries.nextElement();
 										if (el.isDirectory() || !el.getName().endsWith(".class")
-												|| el.getName().contains("META-INF")) {
+												|| el.getName().contains("META-INF")
+												|| el.getName().startsWith("module-info")) {
 											continue;
 										}
 										log.debug("Attempting to load " + el.getName());
