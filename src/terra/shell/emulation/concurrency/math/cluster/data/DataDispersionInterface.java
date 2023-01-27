@@ -13,6 +13,7 @@ import java.net.UnknownHostException;
 import java.util.Enumeration;
 import java.util.HashSet;
 
+import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
 import terra.shell.utils.JProcess;
 
@@ -90,17 +91,38 @@ public class DataDispersionInterface extends JProcess {
 
 	@Override
 	public boolean start() {
+		boolean failed = true;
+		int retryCount = 0;
+
 		try {
 			InetSocketAddress multiAddress = new InetSocketAddress(mCastAddress, port);
 			final MulticastSocket mCast = new MulticastSocket(port);
 			mCast.setTrafficClass(dscp);
+			getLogger().debug("Attempting to register DataDispersionInterface - " + mCastAddress + ":" + port);
 			if (nic == null) {
-				try {
-					mCast.joinGroup(multiAddress, nic);
-					getLogger().debug("Registering DispersionInterface");
-				} catch (Exception e) {
-					e.printStackTrace();
-					getLogger().err("Failed to register DispersionInterface");
+				while (failed) {
+					try {
+						mCast.joinGroup(multiAddress, nic);
+					} catch (Exception e) {
+						if (e.getMessage().equals("Already a member of group")) {
+							failed = false;
+							break;
+						}
+
+						if (retryCount == 20) {
+							e.printStackTrace();
+							getLogger().err("Failed to register DispersionInterface:" + e.getMessage());
+							return false;
+						}
+						try {
+							getLogger().debug("Registration failure, trying again in 1 second...  - " + e.getMessage());
+							Thread.sleep(1000);
+							retryCount++;
+						} catch (Exception e1) {
+							e1.printStackTrace();
+							return false;
+						}
+					}
 				}
 
 			} else {
@@ -112,10 +134,11 @@ public class DataDispersionInterface extends JProcess {
 				mCast.receive(packet);
 				distributeToListeners((InetAddress) packet.getAddress(), packet.getData());
 			}
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return false;
+
 	}
 
 	/**

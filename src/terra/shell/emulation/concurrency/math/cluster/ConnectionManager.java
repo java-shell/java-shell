@@ -79,7 +79,7 @@ public final class ConnectionManager {
 	private LocalServer ls;
 	private String ipFormat = "192.168.1.X";
 	private int port = 2100, activeProcessLimit = 20, passiveProcessLimit = 10, connectionLimit = 5, ipScanRangeMin = 1,
-			ipScanRangeMax = 253, handshakeTimeout = 200, nodeCheckInterval = 60;
+			ipScanRangeMax = 253, handshakeTimeout = 200, nodeCheckInterval = 60, mcastRetryCount = 500;
 	private Timer checkNodesTimer;
 
 	private boolean multicastServiceScan;
@@ -110,6 +110,7 @@ public final class ConnectionManager {
 			conf.setValue("handshakeTimeout", 200);
 			conf.setValue("nodeCheckInterval", 60);
 			conf.setValue("multicastServiceScanEnable", "true");
+			conf.setValue("mcastRetryCount", 500);
 			// TODO Finish setting up Default values
 		} else {
 			// If conf exists, gather configuration options
@@ -121,6 +122,7 @@ public final class ConnectionManager {
 			handshakeTimeout = conf.getValueAsInt("handshakeTimeout");
 			nodeCheckInterval = conf.getValueAsInt("nodeCheckInterval");
 			multicastServiceScan = Boolean.parseBoolean((String) conf.getValue("multicastServiceScanEnable"));
+			mcastRetryCount = conf.getValueAsInt("mcastRetryCount");
 
 			int ipScanMin = conf.getValueAsInt("ipScanRangeMin");
 			int ipScanMax = conf.getValueAsInt("ipScanRangeMax");
@@ -200,21 +202,36 @@ public final class ConnectionManager {
 		try {
 			// Select top Node based on Node.compareTo
 			// Compares Nodes based on overall ping, as well as time since last usage
-			Node n = nodes.poll();
+			final Node n = nodes.poll();
 			if (n == null)
 				return false;
-			boolean success = ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
-			try {
-				n.updatePing();
-				n.lastUsed = System.currentTimeMillis();
-			} catch (Exception e1) {
-				log.debug("Node " + n.getIPv4().toString() + " failed in queue stage, removing node...");
-				nodeAddresses.remove(n.getIPv4().getHostAddress());
-				return queueProcess(p, out, in);
-			}
-			nodes.add(n);
-			if (!success)
-				queueProcess(p, out, in);
+			JProcess sendProcess = new JProcess() {
+
+				@Override
+				public String getName() {
+					return "sendProcess-" + n.getIPv4().getHostAddress();
+				}
+
+				@Override
+				public boolean start() {
+					boolean success = false;
+					try {
+						success = ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+						n.updatePing();
+						n.lastUsed = System.currentTimeMillis();
+					} catch (Exception e1) {
+						log.debug("Node " + n.getIPv4().toString() + " failed in queue stage, removing node...");
+						nodeAddresses.remove(n.getIPv4().getHostAddress());
+						return queueProcess(p, out, in);
+					}
+					nodes.add(n);
+					if (!success)
+						queueProcess(p, out, in);
+					return false;
+				}
+
+			};
+			return sendProcess.run();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -349,6 +366,10 @@ public final class ConnectionManager {
 			multicastServiceScan();
 	}
 
+	public int getMCastRetryCount() {
+		return mcastRetryCount;
+	}
+
 	/**
 	 * Scan for Nodes on the LAN utilizing a MulticastSocket, by setting continually
 	 * listening for new "Here I Am" packets (Recommended Method)
@@ -356,50 +377,67 @@ public final class ConnectionManager {
 	 * @throws IOException
 	 */
 	private void multicastServiceScan() throws IOException {
-		log.log("Starting Mutlicast Service Scan on 229.245.50.2:5963");
-		InetAddress mCastAddress = InetAddress.getByName("229.245.50.2");
-		final MulticastSocket mCast = new MulticastSocket(5963);
-		final DatagramSocket dSock = new DatagramSocket();
-		mCast.joinGroup(mCastAddress);
-		DatagramPacket hereIAm = new DatagramPacket(new byte[] { 4, 6, 8 }, 3, mCastAddress, 5963);
-		dSock.send(hereIAm);
-		JProcess multicastServiceScanProcess = new JProcess() {
+		boolean failed = true;
+		int retryCount = 0;
 
-			@Override
-			public String getName() {
-				return "MulticastServiceScanProcess";
-			}
+		while (failed) {
+			try {
+				log.log("Starting Mutlicast Service Scan on 229.245.50.2:5963");
+				InetAddress mCastAddress = InetAddress.getByName("229.245.50.2");
+				final MulticastSocket mCast = new MulticastSocket(5963);
+				final DatagramSocket dSock = new DatagramSocket();
+				mCast.joinGroup(mCastAddress);
+				DatagramPacket hereIAm = new DatagramPacket(new byte[] { 4, 6, 8 }, 3, mCastAddress, 5963);
+				dSock.send(hereIAm);
+				JProcess multicastServiceScanProcess = new JProcess() {
 
-			@Override
-			public boolean start() {
-				while (true) {
-					byte[] buf = new byte[3];
-					DatagramPacket recv = new DatagramPacket(buf, 3);
-					try {
-						mCast.receive(recv);
-						log.debug("Received Multicast Packet: " + recv.getAddress().getHostAddress());
-						// Here I Am packet:
-						if (buf[0] == 4 && buf[1] == 6 && buf[2] == 8) {
-							InetAddress recieved = recv.getAddress();
-							if (localAddresses.contains(recieved.getHostAddress())) {
-								continue;
-							}
-							addNode((Inet4Address) recv.getAddress());
-						}
-						// Leaving packet:
-						if (buf[0] == 9 && buf[1] == 9 && buf[2] == 9) {
-							// TODO Remove node from "nodes"
-						}
-					} catch (Exception e) {
-						e.printStackTrace();
-						mCast.close();
-						return false;
+					@Override
+					public String getName() {
+						return "MulticastServiceScanProcess";
 					}
+
+					@Override
+					public boolean start() {
+						while (true) {
+							byte[] buf = new byte[3];
+							DatagramPacket recv = new DatagramPacket(buf, 3);
+							try {
+								mCast.receive(recv);
+								log.debug("Received Multicast Packet: " + recv.getAddress().getHostAddress());
+								// Here I Am packet:
+								if (buf[0] == 4 && buf[1] == 6 && buf[2] == 8) {
+									InetAddress recieved = recv.getAddress();
+									if (localAddresses.contains(recieved.getHostAddress())) {
+										continue;
+									}
+									addNode((Inet4Address) recv.getAddress());
+								}
+								// Leaving packet:
+								if (buf[0] == 9 && buf[1] == 9 && buf[2] == 9) {
+									// TODO Remove node from "nodes"
+								}
+							} catch (Exception e) {
+								e.printStackTrace();
+								mCast.close();
+								return false;
+							}
+						}
+					}
+
+				};
+				multicastServiceScanProcess.run();
+				failed = false;
+			} catch (Exception e) {
+				if (retryCount == mcastRetryCount)
+					throw e;
+				try {
+					Thread.sleep(1000);
+					retryCount++;
+				} catch (Exception e1) {
+					e1.printStackTrace();
 				}
 			}
-
-		};
-		multicastServiceScanProcess.run();
+		}
 	}
 
 	/**
