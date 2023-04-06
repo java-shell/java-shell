@@ -410,7 +410,11 @@ public final class ConnectionManager {
 									if (localAddresses.contains(recieved.getHostAddress())) {
 										continue;
 									}
-									addNode((Inet4Address) recv.getAddress());
+									try {
+										addNode((Inet4Address) recv.getAddress());
+									} catch (Exception e) {
+										log.err("Failed to add node, " + e.getLocalizedMessage());
+									}
 								}
 								// Leaving packet:
 								if (buf[0] == 9 && buf[1] == 9 && buf[2] == 9) {

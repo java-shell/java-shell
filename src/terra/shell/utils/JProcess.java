@@ -39,7 +39,7 @@ public abstract class JProcess implements Serializable {
 	private transient PermittedThread t = null;
 	protected UUID u;
 	private transient UUID sUID;
-	private transient boolean uuidset;
+	private boolean uuidset;
 	private transient Logger log = null;
 	private JProcess me = this;
 	private transient InputStream s = null;
@@ -59,7 +59,7 @@ public abstract class JProcess implements Serializable {
 		} catch (Exception e) {
 			user = null;
 		}
-		u = JSHProcesses.getValidUUID();
+		this.setUUID(JSHProcesses.getValidUUID());
 		init();
 	}
 
@@ -68,7 +68,7 @@ public abstract class JProcess implements Serializable {
 			throw new InvalidUserException();
 		}
 		user = u;
-		this.u = JSHProcesses.getValidUUID();
+		this.setUUID(JSHProcesses.getValidUUID());
 		init();
 	}
 
