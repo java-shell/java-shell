@@ -8,6 +8,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -35,7 +36,8 @@ import terra.shell.utils.system.user.UserManagement.UserValidation;
 public abstract class JProcess implements Serializable {
 
 	private static final long serialVersionUID = -4944113269698016157L;
-	private transient boolean stop, isGoing = true, suspend, firstInit = true;
+	private transient boolean stop, isGoing = true, suspend;
+	private boolean firstInit = true;
 	private transient PermittedThread t = null;
 	protected UUID u;
 	private transient UUID sUID;
@@ -48,6 +50,7 @@ public abstract class JProcess implements Serializable {
 	private transient String name = null;
 	private boolean canBeSerialized = false;
 	private Inet4Address origin;
+	private transient Inet4Address lastHop;
 	private User user = null;
 
 	public JProcess() {
@@ -103,11 +106,22 @@ public abstract class JProcess implements Serializable {
 		return origin;
 	}
 
+	public final Inet4Address getLastHop() {
+		return lastHop;
+	}
+
 	/**
 	 * Used for re-initialization of I/O after De-Serialization process, also marks
 	 * the process as being foreign
 	 */
 	public final void reInitialize() {
+		init();
+	}
+
+	public final void reInitialize(Inet4Address origin) {
+		if (this.origin == null)
+			this.origin = origin;
+		lastHop = origin;
 		init();
 	}
 

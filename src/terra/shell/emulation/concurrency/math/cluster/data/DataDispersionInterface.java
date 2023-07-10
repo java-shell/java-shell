@@ -30,7 +30,8 @@ public class DataDispersionInterface extends JProcess {
 	private int port, dscp = 0;
 	private NetworkInterface nic;
 	private HashSet<DataDispersionListener> listeners;
-	private DatagramSocket dSock;
+	// private DatagramSocket dSock;
+	private MulticastSocket mCast;
 
 	/**
 	 * Create a new DataDispersionInterface which sends/receives data on a specific
@@ -46,7 +47,8 @@ public class DataDispersionInterface extends JProcess {
 		this.mCastAddress = mCastAddress;
 		this.port = port;
 		listeners = new HashSet<DataDispersionListener>();
-		this.dSock = new DatagramSocket();
+		// this.dSock = new DatagramSocket();
+		this.nic = nic;
 	}
 
 	/**
@@ -96,10 +98,21 @@ public class DataDispersionInterface extends JProcess {
 
 		try {
 			InetSocketAddress multiAddress = new InetSocketAddress(mCastAddress, port);
-			final MulticastSocket mCast = new MulticastSocket(port);
+			mCast = new MulticastSocket(port);
 			mCast.setTrafficClass(dscp);
 			getLogger().debug("Attempting to register DataDispersionInterface - " + mCastAddress + ":" + port);
 			if (nic == null) {
+				Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
+				while (nics.hasMoreElements()) {
+					NetworkInterface n = nics.nextElement();
+					try {
+						mCast.joinGroup(multiAddress, n);
+						getLogger().log("Registering DataDispersion interface on " + n.getDisplayName());
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			} else {
 				while (failed) {
 					try {
 						mCast.joinGroup(multiAddress, nic);
@@ -124,9 +137,6 @@ public class DataDispersionInterface extends JProcess {
 						}
 					}
 				}
-
-			} else {
-				mCast.joinGroup(multiAddress, nic);
 			}
 			while (!mCast.isClosed()) {
 				byte[] buf = new byte[512];
@@ -160,8 +170,8 @@ public class DataDispersionInterface extends JProcess {
 					+ " expected " + inetMCastAddress.getHostAddress());
 		}
 		DatagramPacket packet = new DatagramPacket(data.data(), 512, InetAddress.getByName(mCastAddress), port);
-		dSock.setTrafficClass(dscp);
-		dSock.send(packet);
+		// dSock.setTrafficClass(dscp);
+		mCast.send(packet);
 	}
 
 	/**
@@ -172,7 +182,8 @@ public class DataDispersionInterface extends JProcess {
 	 */
 	protected void distributeToListeners(InetAddress address, byte[] data) {
 		for (DataDispersionListener l : listeners) {
-			l.dataReceived(new BasicImmutableData<byte[]>(address, data));
+			if (l != null)
+				l.dataReceived(new BasicImmutableData<byte[]>(address, data));
 		}
 	}
 

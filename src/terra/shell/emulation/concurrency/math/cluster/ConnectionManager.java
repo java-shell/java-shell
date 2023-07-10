@@ -195,47 +195,43 @@ public final class ConnectionManager {
 	 * @param p   JProcess to be sent
 	 * @param out
 	 * @param in
-	 * @return True if process is succesfully queued, false otherwise
 	 */
-	public boolean queueProcess(JProcess p, OutputStream out, InputStream in) {
+	public void queueProcess(final JProcess p, final OutputStream out, final InputStream in) {
 		// TODO Add node selection
-		try {
-			// Select top Node based on Node.compareTo
-			// Compares Nodes based on overall ping, as well as time since last usage
-			final Node n = nodes.poll();
-			if (n == null)
-				return false;
-			JProcess sendProcess = new JProcess() {
-
-				@Override
-				public String getName() {
-					return "sendProcess-" + n.getIPv4().getHostAddress();
-				}
-
-				@Override
-				public boolean start() {
-					boolean success = false;
-					try {
-						success = ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
-						n.updatePing();
-						n.lastUsed = System.currentTimeMillis();
-					} catch (Exception e1) {
-						log.debug("Node " + n.getIPv4().toString() + " failed in queue stage, removing node...");
-						nodeAddresses.remove(n.getIPv4().getHostAddress());
-						return queueProcess(p, out, in);
-					}
-					nodes.add(n);
-					if (!success)
-						queueProcess(p, out, in);
-					return false;
-				}
-
-			};
-			return sendProcess.run();
-		} catch (Exception e) {
-			e.printStackTrace();
+		// Select top Node based on Node.compareTo
+		// Compares Nodes based on overall ping, as well as time since last usage
+		final Node n = nodes.peek();
+		if (n == null) {
+			log.debug("Attempt to send process to nodes, node is null");
+			return;
 		}
-		return true;
+		JProcess sendProcess = new JProcess() {
+
+			@Override
+			public String getName() {
+				return "sendProcess-" + n.getIPv4().getHostAddress();
+			}
+
+			@Override
+			public boolean start() {
+				boolean success = false;
+				try {
+					success = ls.sendProcess(n.ip, p, ProcessPriority.MEDIUM, out, in);
+					n.updatePing();
+					n.lastUsed = System.currentTimeMillis();
+				} catch (Exception e1) {
+					log.debug("Node " + n.getIPv4().toString() + " failed in queue stage, removing node...");
+					nodeAddresses.remove(n.getIPv4().getHostAddress());
+					// queueProcess(p, out, in);
+					return true;
+				}
+				// nodes.add(n);
+				return false;
+			}
+
+		};
+		sendProcess.run();
+		return;
 	}
 
 	/**
@@ -383,54 +379,66 @@ public final class ConnectionManager {
 		while (failed) {
 			try {
 				log.log("Starting Mutlicast Service Scan on 229.245.50.2:5963");
-				InetAddress mCastAddress = InetAddress.getByName("229.245.50.2");
+				// InetAddress mCastAddress = InetAddress.getByName("229.245.50.2");
+				InetSocketAddress mCastAddress = new InetSocketAddress("229.245.50.2", 5963);
 				final MulticastSocket mCast = new MulticastSocket(5963);
 				final DatagramSocket dSock = new DatagramSocket();
-				mCast.joinGroup(mCastAddress);
-				DatagramPacket hereIAm = new DatagramPacket(new byte[] { 4, 6, 8 }, 3, mCastAddress, 5963);
-				dSock.send(hereIAm);
-				JProcess multicastServiceScanProcess = new JProcess() {
+				Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
 
-					@Override
-					public String getName() {
-						return "MulticastServiceScanProcess";
+				while (nics.hasMoreElements()) {
+					NetworkInterface nic = nics.nextElement();
+					try {
+						mCast.joinGroup(mCastAddress, nic);
+					} catch (Exception e) {
+						continue;
 					}
+					log.log("Joined on " + nic.getDisplayName());
+					DatagramPacket hereIAm = new DatagramPacket(new byte[] { 4, 6, 8 }, 3,
+							InetAddress.getByName("229.245.50.2"), 5963);
+					dSock.send(hereIAm);
+					JProcess multicastServiceScanProcess = new JProcess() {
 
-					@Override
-					public boolean start() {
-						while (true) {
-							byte[] buf = new byte[3];
-							DatagramPacket recv = new DatagramPacket(buf, 3);
-							try {
-								mCast.receive(recv);
-								log.debug("Received Multicast Packet: " + recv.getAddress().getHostAddress());
-								// Here I Am packet:
-								if (buf[0] == 4 && buf[1] == 6 && buf[2] == 8) {
-									InetAddress recieved = recv.getAddress();
-									if (localAddresses.contains(recieved.getHostAddress())) {
-										continue;
+						@Override
+						public String getName() {
+							return "MulticastServiceScanProcess";
+						}
+
+						@Override
+						public boolean start() {
+							while (true) {
+								byte[] buf = new byte[3];
+								DatagramPacket recv = new DatagramPacket(buf, 3);
+								try {
+									mCast.receive(recv);
+									log.debug("Received Multicast Packet: " + recv.getAddress().getHostAddress());
+									// Here I Am packet:
+									if (buf[0] == 4 && buf[1] == 6 && buf[2] == 8) {
+										InetAddress recieved = recv.getAddress();
+										if (localAddresses.contains(recieved.getHostAddress())) {
+											continue;
+										}
+										try {
+											addNode((Inet4Address) recv.getAddress());
+										} catch (Exception e) {
+											log.err("Failed to add node, " + e.getLocalizedMessage());
+										}
 									}
-									try {
-										addNode((Inet4Address) recv.getAddress());
-									} catch (Exception e) {
-										log.err("Failed to add node, " + e.getLocalizedMessage());
+									// Leaving packet:
+									if (buf[0] == 9 && buf[1] == 9 && buf[2] == 9) {
+										// TODO Remove node from "nodes"
 									}
+								} catch (Exception e) {
+									e.printStackTrace();
+									mCast.close();
+									return false;
 								}
-								// Leaving packet:
-								if (buf[0] == 9 && buf[1] == 9 && buf[2] == 9) {
-									// TODO Remove node from "nodes"
-								}
-							} catch (Exception e) {
-								e.printStackTrace();
-								mCast.close();
-								return false;
 							}
 						}
-					}
 
-				};
-				multicastServiceScanProcess.run();
-				failed = false;
+					};
+					multicastServiceScanProcess.run();
+					failed = false;
+				}
 			} catch (Exception e) {
 				if (retryCount == mcastRetryCount)
 					throw e;
@@ -696,6 +704,11 @@ public final class ConnectionManager {
 				sc.close();
 				out.close();
 				s.close();
+
+				if (!nodeAddresses.contains(s.getInetAddress().getHostName())) {
+					addNode((Inet4Address) s.getInetAddress());
+				}
+
 				return;
 			} else {
 				// Check connection limit, if exceeded refuse connection
@@ -806,13 +819,13 @@ public final class ConnectionManager {
 					log.debug("Object converted sucecssfully");
 					objIn.close();
 					// Convert from object to process
-					final InetAddress origin = s.getInetAddress();
+					final Inet4Address origin = (Inet4Address) s.getInetAddress();
 					log.debug("Creating JProcess");
 					JProcess process;
 					try {
 						process = (JProcess) processObj;
 						// Set process to use I/O from Socket
-						process.reInitialize();
+						process.reInitialize(origin);
 						process.setOutputStream(out);
 						process.redirectIn(s.getInputStream());
 					} catch (ClassCastException e) {
@@ -1099,8 +1112,9 @@ public final class ConnectionManager {
 		private boolean sendProcess(Inet4Address ip, JProcess p, ProcessPriority priority, OutputStream out,
 				InputStream in) throws UnknownHostException, IOException {
 			// Setup server connection
-			log.debug("Sending process: " + p.getName() + ", to " + ip);
 			Socket s = new Socket(ip.getHostAddress(), port);
+			log.debug("Sending process: " + p.getName() + ", to " + ip + " on interface "
+					+ s.getLocalSocketAddress().toString());
 			Scanner sc = new Scanner(s.getInputStream());
 			PrintStream pOut = new PrintStream(s.getOutputStream());
 			p.createReturn();
@@ -1112,16 +1126,12 @@ public final class ConnectionManager {
 			log.debug("Sent PASSIVE");
 			log.debug("Creating data socket channel...");
 			ServerSocketChannel ssc = ServerSocketChannel.open();
-			int port = 2101;
-			while (true)
-				try {
-					ssc.bind(new InetSocketAddress(port));
-					break;
-				} catch (IOException e) {
-					port++;
-					continue;
-				}
-			log.debug("Created channel on port " + port);
+			try {
+				ssc.bind(new InetSocketAddress(s.getLocalAddress(), 0));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			log.debug("Created channel on port " + ssc.socket().getLocalPort());
 			pOut.println(ssc.socket().getLocalPort());
 			log.debug("Waiting for connection...");
 			SocketChannel sockCh = ssc.accept();
@@ -1190,6 +1200,8 @@ public final class ConnectionManager {
 				sendBytes(cBytes, pOut, sc, sockCh);
 			}
 			pOut.flush();
+			sockCh.close();
+			ssc.close();
 
 			// Turn serialized process into byte[]
 			byte[] dat = bout.toByteArray();
