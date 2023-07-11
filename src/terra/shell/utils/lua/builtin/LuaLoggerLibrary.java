@@ -9,11 +9,13 @@ import com.hk.lua.LuaInterpreter;
 import com.hk.lua.LuaObject;
 import com.hk.lua.LuaType;
 
+import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 
 public enum LuaLoggerLibrary implements BiConsumer<Environment, LuaObject>, LuaMethod {
 	createlogger {
 		public LuaObject call(LuaInterpreter interp, LuaObject[] args) {
+			LogManager.out.println("LUA CREATELOGGER CALLED");
 			Lua.checkArgs(name(), args, LuaType.STRING);
 			String loggerName = args[0].getString();
 			LuaLogger log = new LuaLogger(loggerName);

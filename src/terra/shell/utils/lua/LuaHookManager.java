@@ -6,20 +6,25 @@ import java.util.Hashtable;
 import com.hk.lua.LuaFactory;
 import com.hk.lua.LuaLibrary;
 
+import terra.shell.logging.LogManager;
+import terra.shell.logging.Logger;
 import terra.shell.utils.lua.exceptions.LuaLibraryLoadException;
 
 public class LuaHookManager {
 	private static Hashtable<String, LuaLibrary<?>> luaLibs = new Hashtable<String, LuaLibrary<?>>();
+	private static Logger log = LogManager.getLogger("LuaHookManager");
 
 	public static void registerHook(String hookQualifier, LuaLibrary<?> lib) throws LuaLibraryLoadException {
 		if (luaLibs.containsKey(hookQualifier) || luaLibs.contains(lib)) {
 			throw new LuaLibraryLoadException();
 		}
+		log.debug("Registering Lua library with qualifer hook: " + hookQualifier);
 		luaLibs.put(hookQualifier, lib);
 	}
 
 	public static void deregisterHook(String hookQualifier) {
 		luaLibs.remove(hookQualifier);
+		log.debug("De-registering Lua library with qualifier hook: " + hookQualifier);
 	}
 
 	public static LuaFactory injecAlltHooks(LuaFactory factory) {

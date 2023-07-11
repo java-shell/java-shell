@@ -25,6 +25,7 @@ import terra.shell.command.builtin.ClusterManagement;
 import terra.shell.command.builtin.CmdHistory;
 import terra.shell.command.builtin.Copy;
 import terra.shell.command.builtin.Dir;
+import terra.shell.command.builtin.ExecLua;
 import terra.shell.command.builtin.Export;
 import terra.shell.command.builtin.GarbageCollection;
 import terra.shell.command.builtin.HLM;
@@ -48,6 +49,9 @@ import terra.shell.utils.keys.Event;
 import terra.shell.utils.keys.EventInterpreter;
 import terra.shell.utils.keys.EventType;
 import terra.shell.utils.keys._Listener;
+import terra.shell.utils.lua.LuaHookManager;
+import terra.shell.utils.lua.builtin.JavashellLuaLibrary;
+import terra.shell.utils.lua.exceptions.LuaLibraryLoadException;
 import terra.shell.utils.streams.DualPrintStream;
 import terra.shell.utils.streams.UnclosableInStream;
 import terra.shell.utils.system.ByteClassLoader;
@@ -68,7 +72,7 @@ import terra.shell.utils.system.user.UserManagement.UserValidation;
  */
 public class Launch {
 	private static Logger log = LogManager.getLogger("KERNEL");
-	private static boolean doHib = false; 
+	private static boolean doHib = false;
 	private static boolean doTerm = true;
 	private static JSHClassLoader loader;
 	private static _Listener list;
@@ -219,6 +223,16 @@ public class Launch {
 			e.printStackTrace();
 		}
 
+		// INIT Lua
+		log.log("Initializing Lua management interface");
+		try {
+			LuaHookManager.registerHook("logger", JavashellLuaLibrary.LOGGER);
+		} catch (LuaLibraryLoadException e) {
+			e.printStackTrace();
+			log.err("Exception in LuaLibrary loading");
+			log.err("Lua interpretation may not function as expected!");
+		}
+
 		// Check terminal flags, if none are detected launch terminal, otherwise run as
 		// daemon
 		if (doTerm && Boolean.parseBoolean((String) launchConf.getValue("launchTerminal"))) {
@@ -238,6 +252,7 @@ public class Launch {
 					log.err("Failed to access local embedded commands");
 				}
 			}
+
 			// Init Terminal
 			EventManager.invokeEvent(new InitEvent(InitStage.INIT_COMPLETION));
 			Terminal t = new Terminal();
@@ -319,6 +334,9 @@ public class Launch {
 		Clear clear = new Clear();
 		cmds.put(clear.getName(), clear);
 		log.log("Loaded embedded command: " + clear.getName());
+		ExecLua lua = new ExecLua();
+		cmds.put(lua.getName(), lua);
+		log.log("Loaded embedded command: " + lua.getName());
 	}
 
 	// Halt JSH
