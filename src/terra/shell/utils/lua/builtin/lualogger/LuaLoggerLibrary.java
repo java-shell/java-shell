@@ -1,4 +1,4 @@
-package terra.shell.utils.lua.builtin;
+package terra.shell.utils.lua.builtin.lualogger;
 
 import java.util.function.BiConsumer;
 
@@ -15,7 +15,6 @@ import terra.shell.logging.Logger;
 public enum LuaLoggerLibrary implements BiConsumer<Environment, LuaObject>, LuaMethod {
 	createlogger {
 		public LuaObject call(LuaInterpreter interp, LuaObject[] args) {
-			LogManager.out.println("LUA CREATELOGGER CALLED");
 			Lua.checkArgs(name(), args, LuaType.STRING);
 			String loggerName = args[0].getString();
 			LuaLogger log = new LuaLogger(loggerName);

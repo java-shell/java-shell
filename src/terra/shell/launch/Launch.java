@@ -227,6 +227,7 @@ public class Launch {
 		log.log("Initializing Lua management interface");
 		try {
 			LuaHookManager.registerHook("logger", JavashellLuaLibrary.LOGGER);
+			LuaHookManager.registerHook("Socket", JavashellLuaLibrary.SOCKET);
 		} catch (LuaLibraryLoadException e) {
 			e.printStackTrace();
 			log.err("Exception in LuaLibrary loading");

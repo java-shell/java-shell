@@ -1,4 +1,4 @@
-package terra.shell.utils.lua.builtin;
+package terra.shell.utils.lua.builtin.lualogger;
 
 import java.util.function.Consumer;
 

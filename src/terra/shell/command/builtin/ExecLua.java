@@ -70,7 +70,6 @@ public class ExecLua extends BasicCommand {
 			factory.compile();
 			LuaInterpreter interp = factory.build();
 			LuaObject ret = interp.execute();
-			getLogger().print(ret.getString());
 		} catch (Exception e) {
 			e.printStackTrace();
 			getLogger().err("Failed to execute " + e.toString());
