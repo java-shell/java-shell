@@ -65,8 +65,25 @@ public class LuaLogger extends LuaUserdata {
 
 		});
 
+		LuaObject errFunction = Lua.newFunc(new Consumer<LuaObject[]>() {
+
+			@Override
+			public void accept(LuaObject[] args) {
+				if (args.length < 2 || !(args[0] instanceof LuaLogger))
+					throw Lua.badArgument(0, "log", "Logger expected");
+				if (args[1].type() != LuaType.STRING)
+					throw Lua.badArgument(1, "log", "String expected");
+
+				LuaLogger luaLogger = (LuaLogger) args[0];
+				Logger log = (Logger) luaLogger.getUserdata();
+				log.err(args[1].getString());
+			}
+
+		});
+
 		luaLoggerMetatable.rawSet("log", logFunction);
 		luaLoggerMetatable.rawSet("debug", debugFunction);
+		luaLoggerMetatable.rawSet("err", errFunction);
 	}
 
 }

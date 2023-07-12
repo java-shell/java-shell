@@ -7,9 +7,6 @@ import java.util.function.Consumer;
 
 import com.hk.lua.Lua;
 import com.hk.lua.Lua.LuaMethod;
-
-import terra.shell.logging.LogManager;
-
 import com.hk.lua.LuaException;
 import com.hk.lua.LuaInterpreter;
 import com.hk.lua.LuaObject;

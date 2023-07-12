@@ -6,7 +6,6 @@ import java.util.function.BiConsumer;
 import com.hk.lua.Environment;
 import com.hk.lua.Lua;
 import com.hk.lua.Lua.LuaMethod;
-import com.hk.lua.LuaException;
 import com.hk.lua.LuaInterpreter;
 import com.hk.lua.LuaObject;
 import com.hk.lua.LuaType;
