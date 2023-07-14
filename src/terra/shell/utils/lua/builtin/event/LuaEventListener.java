@@ -1,6 +1,9 @@
 package terra.shell.utils.lua.builtin.event;
 
+import java.util.function.Consumer;
+
 import com.hk.lua.Lua;
+import com.hk.lua.LuaInterpreter;
 import com.hk.lua.LuaObject;
 import com.hk.lua.LuaUserdata;
 
@@ -13,7 +16,7 @@ public class LuaEventListener extends LuaUserdata {
 	private EventListener eventListener;
 	private static final LuaObject luaEventListenerMetatable = Lua.newTable();
 
-	public LuaEventListener(String eventType, LuaObject callback) {
+	public LuaEventListener(LuaInterpreter interp, String eventType, LuaObject callback) {
 		this.eventType = eventType;
 		this.callback = callback;
 		metatable = luaEventListenerMetatable;
@@ -21,9 +24,14 @@ public class LuaEventListener extends LuaUserdata {
 
 			@Override
 			public void trigger(Event e) {
+				if (callback != null) {
+					LuaEventWrapper lew = new LuaEventWrapper(e);
+					callback.call(interp, lew);
+				}
 			}
 
 		};
+		eventListener.register(eventType);
 	}
 
 	@Override
@@ -36,9 +44,25 @@ public class LuaEventListener extends LuaUserdata {
 		return null;
 	}
 
+	private void setCallback(LuaObject callback) {
+		this.callback = callback;
+	}
+
 	static {
-		luaEventListenerMetatable.rawSet("__name", Lua.newString("LOGGER"));
+		luaEventListenerMetatable.rawSet("__name", Lua.newString("EVENTLISTENER"));
 		luaEventListenerMetatable.rawSet("__index", luaEventListenerMetatable);
+
+		LuaObject setCallbackFunctionFunction = Lua.newFunc(new Consumer<LuaObject[]>() {
+
+			@Override
+			public void accept(LuaObject[] args) {
+				if (args.length < 2 || !(args[0] instanceof LuaEventListener))
+					throw Lua.badArgument(0, "SetHandler", "EVENTLISTENER type expected");
+
+				LuaEventListener lel = (LuaEventListener) args[0];
+				lel.setCallback(args[1]);
+			}
+		});
 	}
 
 }

@@ -12,7 +12,7 @@ public class DummyType implements EventType {
 
 	@Override
 	public String type() {
-		 
+
 		return "DummyType";
 	}
 
@@ -30,8 +30,13 @@ public class DummyType implements EventType {
 		}
 
 		public String getCreator() {
-			 
+
 			return "Dummy";
+		}
+
+		@Override
+		public Object[] getArgs() {
+			return null;
 		}
 
 	}

@@ -74,6 +74,12 @@ public class ModuleEvent {
 			return me;
 		}
 
+		@Override
+		public Object[] getArgs() {
+			Object[] args = { getCreator(), me.args };
+			return args;
+		}
+
 	}
 
 }

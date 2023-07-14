@@ -724,6 +724,12 @@ public class Launch {
 			return stage;
 		}
 
+		@Override
+		public Object[] getArgs() {
+			Object[] args = { "INIT", stage };
+			return args;
+		}
+
 	}
 
 	/**

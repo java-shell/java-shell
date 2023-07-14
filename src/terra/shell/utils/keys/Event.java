@@ -16,6 +16,8 @@ public interface Event {
 
 	public String getCreator();
 
+	public Object[] getArgs();
+
 	@Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
 	@Target(ElementType.CONSTRUCTOR)
 	public @interface EventPriority {
