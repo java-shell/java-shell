@@ -63,6 +63,8 @@ public class LuaEventListener extends LuaUserdata {
 				lel.setCallback(args[1]);
 			}
 		});
+
+		luaEventListenerMetatable.rawSet("SetHandler", setCallbackFunctionFunction);
 	}
 
 }

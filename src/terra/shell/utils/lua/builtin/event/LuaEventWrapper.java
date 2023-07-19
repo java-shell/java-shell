@@ -6,6 +6,7 @@ import com.hk.lua.LuaInterpreter;
 import com.hk.lua.LuaObject;
 import com.hk.lua.LuaUserdata;
 
+import terra.shell.logging.LogManager;
 import terra.shell.utils.keys.Event;
 
 public class LuaEventWrapper extends LuaUserdata {
@@ -59,8 +60,17 @@ public class LuaEventWrapper extends LuaUserdata {
 					throw Lua.badArgument(0, "Type", "EVENT type expected");
 
 				LuaEventWrapper lew = (LuaEventWrapper) args[0];
+
 				Object[] eArgs = lew.getArgs();
-				return Lua.newLuaObject(eArgs);
+
+				LuaObject returnTable = Lua.newTable();
+
+				long i = 0;
+				for (Object o : eArgs) {
+					returnTable.rawSet(i, Lua.newLuaObject(o));
+					i++;
+				}
+				return returnTable;
 			}
 
 		});
