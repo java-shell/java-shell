@@ -2,9 +2,16 @@ package terra.shell.utils.lua;
 
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.function.BiConsumer;
 
+import com.hk.lua.Environment;
+import com.hk.lua.Lua;
 import com.hk.lua.LuaFactory;
+import com.hk.lua.LuaInterpreter;
 import com.hk.lua.LuaLibrary;
+import com.hk.lua.LuaObject;
+import com.hk.lua.LuaType;
+import com.hk.lua.Lua.LuaMethod;
 
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
@@ -61,4 +68,5 @@ public class LuaHookManager {
 		}
 		return factory;
 	}
+
 }
