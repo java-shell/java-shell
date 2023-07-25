@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Scanner;
 
+import com.hk.lua.LuaLibrary;
+
 import terra.shell.command.Command;
 import terra.shell.command.Terminal;
 import terra.shell.command.builtin.Chdir;

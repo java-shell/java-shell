@@ -34,7 +34,7 @@ public class LuaHookManager {
 		log.debug("De-registering Lua library with qualifier hook: " + hookQualifier);
 	}
 
-	public static LuaFactory injecAlltHooks(LuaFactory factory) {
+	public static LuaFactory injecAllHooks(LuaFactory factory) {
 		Enumeration<LuaLibrary<?>> libsEnum = luaLibs.elements();
 		while (libsEnum.hasMoreElements()) {
 			factory.addLibrary(libsEnum.nextElement());
