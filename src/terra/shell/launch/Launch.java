@@ -232,6 +232,7 @@ public class Launch {
 			LuaHookManager.registerHook("Socket", JavashellLuaLibrary.SOCKET);
 			LuaHookManager.registerHook("events", JavashellLuaLibrary.EVENTS);
 			LuaHookManager.registerHook("Timer", JavashellLuaLibrary.TIMER);
+			LuaHookManager.registerHook("Package", LuaLibrary.PACKAGE);
 		} catch (LuaLibraryLoadException e) {
 			e.printStackTrace();
 			log.err("Exception in LuaLibrary loading");

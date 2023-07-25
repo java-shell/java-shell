@@ -67,7 +67,6 @@ public class ExecLua extends BasicCommand {
 		try {
 			LuaFactory factory = Lua.factory(luaFile);
 			Lua.importStandard(factory);
-			factory.addLibrary(LuaLibrary.PACKAGE);
 			LuaHookManager.injecAllHooks(factory);
 			factory.compile();
 			LuaInterpreter interp = factory.build();
