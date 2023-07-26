@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import com.hk.lua.Lua;
 import com.hk.lua.LuaFactory;
 import com.hk.lua.LuaInterpreter;
-import com.hk.lua.LuaLibrary;
+import com.hk.lua.LuaLibraryPackage;
 import com.hk.lua.LuaObject;
 
 import terra.shell.command.BasicCommand;
@@ -70,6 +70,7 @@ public class ExecLua extends BasicCommand {
 			LuaHookManager.injecAllHooks(factory);
 			factory.compile();
 			LuaInterpreter interp = factory.build();
+			interp.setExtra(LuaLibraryPackage.EXKEY_PATH, luaFile.getParent() + "/?.lua");
 			LuaObject ret = interp.execute();
 		} catch (Exception e) {
 			e.printStackTrace();
