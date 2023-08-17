@@ -13,4 +13,6 @@ public class JavashellLuaLibrary {
 			LuaSocketHandlerLibrary.class);
 	public static final LuaLibrary<LuaEventLibrary> EVENTS = new LuaLibrary<>("Events", LuaEventLibrary.class);
 	public static final LuaLibrary<LuaTimerLibrary> TIMER = new LuaLibrary<>("Timer", LuaTimerLibrary.class);
+	public static final LuaLibrary<JavashellGenericLuaLibrary> JSH = new LuaLibrary<>("Generic",
+			JavashellGenericLuaLibrary.class);
 }
