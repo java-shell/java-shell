@@ -45,6 +45,15 @@ public final class Terminal extends InteractiveObject {
 	}
 
 	/**
+	 * Create a new terminal authenticated with the provided User
+	 * 
+	 * @param user
+	 */
+	public Terminal(User user) {
+		this.user = user;
+	}
+
+	/**
 	 * Create a new terminal specifying the direction of its output
 	 * 
 	 * @param gout OutputStream to point all of this terminals output.

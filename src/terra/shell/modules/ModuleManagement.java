@@ -2,6 +2,7 @@ package terra.shell.modules;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -17,7 +18,6 @@ import terra.shell.launch.Launch;
 import terra.shell.logging.LogManager;
 import terra.shell.logging.Logger;
 import terra.shell.utils.system.ByteClassLoader;
-import terra.shell.utils.system.JSHClassLoader;
 
 /**
  * Resource class which manages all Modules, and is launched by Launch in its
@@ -57,125 +57,39 @@ public final class ModuleManagement {
 					if (Launch.modularizedCmds) {
 
 					}
+					ArrayList<HashSet<String>> prioritizedLoadQueue = new ArrayList<HashSet<String>>();
+					HashSet<String> unprioritizedLoadQueue = new HashSet<String>();
 					String s;
 					while (sc.hasNext()) {
-						Thread.sleep(10);
 						s = sc.nextLine();
 						if (s.startsWith("#"))
 							continue;
-						final File f = new File(prefix, "/modules/" + s + "/module.class");
-						final File dir = new File(prefix, "/modules/" + s + "/");
-						File reslist = new File(prefix, "/modules/" + s + "/res.list");
-						if (reslist.exists()) {
-							Scanner r = new Scanner(new FileInputStream(reslist));
-							final ArrayList<File> rf = new ArrayList<File>();
-							final ArrayList<String> rff = new ArrayList<String>();
-							while (r.hasNext()) {
-								final String line = r.nextLine();
-								if (line.startsWith("#"))
-									continue;
-								final File fr = new File(prefix, "/modules/" + s + "/" + line);
-								rf.add(fr);
-								rff.add(line);
+						if (s.contains(":")) {
+							String[] split = s.split(":");
+							int priority = Integer.parseInt(split[0]);
+							if (priority >= prioritizedLoadQueue.size() || prioritizedLoadQueue.get(priority) == null) {
+								prioritizedLoadQueue.add(priority, new HashSet<String>());
 							}
-							r.close();
-							r = null;
-
-							final File[] res = new File[rf.size()];
-							final String[] ures = new String[rff.size()];
-							final HashSet<File> jarRes = new HashSet<File>();
-							for (int i = 0; i < res.length; i++) {
-								res[i] = rf.get(i);
-								ures[i] = rff.get(i);
-								if (res[i].getName().endsWith(".jar")) {
-									jarRes.add(res[i]);
-								}
-							}
-							// bcl =
-							if (jarRes.size() != 0) {
-								URL[] urls = new URL[jarRes.size() + 1];
-								urls[0] = new URL("file://" + prefix.getAbsolutePath() + "/modules/");
-								Iterator<File> files = jarRes.iterator();
-								for (int i = 1; i < urls.length; i++) {
-									urls[i] = new URL("jar:file:" + files.next().getAbsolutePath() + "!/");
-								}
-								bcl = new ByteClassLoader(urls);
-							}
-
-							log.log("Loading resource classes for " + s);
-							for (int i = 0; (i < res.length); i++) {
-								if (res[i].getName().endsWith(".jar")) {
-									log.log("Found " + res[i].getName() + ", loading...");
-
-									JarFile jf = new JarFile(res[i]);
-									Enumeration<JarEntry> entries = jf.entries();
-									while (entries.hasMoreElements()) {
-										JarEntry el = entries.nextElement();
-										if (el.isDirectory() || !el.getName().endsWith(".class")
-												|| el.getName().contains("META-INF")
-												|| el.getName().startsWith("module-info")) {
-											continue;
-										}
-										log.debug("Attempting to load " + el.getName());
-										String className = el.getName().replace('/', '.').substring(0,
-												el.getName().length() - 6);
-										Class<?> c = bcl.loadClass(className);
-									}
-									jf.close();
-									log.log("Successfully loaded jar dependency " + res[i].getName());
-									continue;
-								}
-								if (!res[i].getName().equals(s + ".module") && !res[i].getName().equals("res.list")
-										&& !res[i].isDirectory()) {
-									try {
-										bcl.loadClass(ures[i]);
-										log.log("Loaded resource class " + res[i].getName() + " for " + s);
-									} catch (Exception e) {
-										log.log("Failed to load resource class " + res[i].getPath());
-										log.log(e.getMessage() + "\n");
-										e.printStackTrace(System.err);
-									}
-								}
-								res[i] = null;
-								ures[i] = null;
-							}
+							prioritizedLoadQueue.get(priority).add(split[1]);
 						} else {
-							log.log("res.list not found for " + s);
+							unprioritizedLoadQueue.add(s);
 						}
-						if (f.exists()) {
-							try {
-								if (bcl == null)
-									bcl = new ByteClassLoader(
-											new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
-								final Class<?> classtmp = bcl.loadClass(s + ".module");
-								final Module mod = (Module) classtmp.newInstance();
-								modules.put(mod.getName(), mod);
-								mod.init();
-								Thread t = new Thread(new Runnable() {
-									public void run() {
-										try {
-											mod.onEnable();
-											mod.start();
-										} catch (Exception e) {
-											e.printStackTrace();
-										}
-									}
-								});
-								t.setName(mod.getName());
-								t.start();
-								mThreads.put(mod, t);
-								log.log("Module loaded: " + mod.getName());
-							} catch (Exception e) {
-								e.printStackTrace();
-								log.log("Unable to load module: " + f.getAbsolutePath());
-							}
-						} else {
-							log.log("Module: " + f.getPath() + " not found!");
-						}
-
 					}
 					sc.close();
 					sc = null;
+
+					for (int i = 0; i < prioritizedLoadQueue.size(); i++) {
+						try {
+							loadModulesFromSet(prioritizedLoadQueue.get(i), prefix);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+					try {
+						loadModulesFromSet(unprioritizedLoadQueue, prefix);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				} catch (final Exception e) {
 					e.printStackTrace();
 					log.log("Unable to read modules.lst: " + e.getMessage());
@@ -188,6 +102,122 @@ public final class ModuleManagement {
 		// MAListener ml = new MAListener(this);
 		// EventManager.registerListener(ml, "module-access");
 		return true;
+	}
+
+	public void loadModulesFromSet(HashSet<String> modules, File prefix)
+			throws IOException, ClassNotFoundException, InterruptedException {
+		for (String s : modules) {
+			Thread.sleep(10);
+
+			final File f = new File(prefix, "/modules/" + s + "/module.class");
+			final File dir = new File(prefix, "/modules/" + s + "/");
+			File reslist = new File(prefix, "/modules/" + s + "/res.list");
+			if (reslist.exists()) {
+				Scanner r = new Scanner(new FileInputStream(reslist));
+				final ArrayList<File> rf = new ArrayList<File>();
+				final ArrayList<String> rff = new ArrayList<String>();
+				while (r.hasNext()) {
+					final String line = r.nextLine();
+					if (line.startsWith("#"))
+						continue;
+					final File fr = new File(prefix, "/modules/" + s + "/" + line);
+					rf.add(fr);
+					rff.add(line);
+				}
+				r.close();
+				r = null;
+
+				final File[] res = new File[rf.size()];
+				final String[] ures = new String[rff.size()];
+				final HashSet<File> jarRes = new HashSet<File>();
+				for (int i = 0; i < res.length; i++) {
+					res[i] = rf.get(i);
+					ures[i] = rff.get(i);
+					if (res[i].getName().endsWith(".jar")) {
+						jarRes.add(res[i]);
+					}
+				}
+				// bcl =
+				if (jarRes.size() != 0) {
+					URL[] urls = new URL[jarRes.size() + 1];
+					urls[0] = new URL("file://" + prefix.getAbsolutePath() + "/modules/");
+					Iterator<File> files = jarRes.iterator();
+					for (int i = 1; i < urls.length; i++) {
+						urls[i] = new URL("jar:file:" + files.next().getAbsolutePath() + "!/");
+					}
+					bcl = new ByteClassLoader(urls);
+				}
+
+				log.log("Loading resource classes for " + s);
+				for (int i = 0; (i < res.length); i++) {
+					if (res[i].getName().endsWith(".jar")) {
+						log.log("Found " + res[i].getName() + ", loading...");
+
+						JarFile jf = new JarFile(res[i]);
+						Enumeration<JarEntry> entries = jf.entries();
+						while (entries.hasMoreElements()) {
+							JarEntry el = entries.nextElement();
+							if (el.isDirectory() || !el.getName().endsWith(".class")
+									|| el.getName().contains("META-INF") || el.getName().startsWith("module-info")) {
+								continue;
+							}
+							log.debug("Attempting to load " + el.getName());
+							String className = el.getName().replace('/', '.').substring(0, el.getName().length() - 6);
+							Class<?> c = bcl.loadClass(className);
+						}
+						jf.close();
+						log.log("Successfully loaded jar dependency " + res[i].getName());
+						continue;
+					}
+					if (!res[i].getName().equals(s + ".module") && !res[i].getName().equals("res.list")
+							&& !res[i].isDirectory()) {
+						try {
+							bcl.loadClass(ures[i]);
+							log.log("Loaded resource class " + res[i].getName() + " for " + s);
+						} catch (Exception e) {
+							log.log("Failed to load resource class " + res[i].getPath());
+							log.log(e.getMessage() + "\n");
+							e.printStackTrace(System.err);
+						}
+					}
+					res[i] = null;
+					ures[i] = null;
+				}
+			} else {
+				log.log("res.list not found for " + s);
+			}
+			if (f.exists()) {
+				try {
+					if (bcl == null)
+						bcl = new ByteClassLoader(
+								new URL[] { new URL("file://" + prefix.getAbsolutePath() + "/modules/") });
+					final Class<?> classtmp = bcl.loadClass(s + ".module");
+					final Module mod = (Module) classtmp.newInstance();
+					ModuleManagement.modules.put(mod.getName(), mod);
+					mod.init();
+					Thread t = new Thread(new Runnable() {
+						public void run() {
+							try {
+								mod.onEnable();
+								mod.start();
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						}
+					});
+					t.setName(mod.getName());
+					t.start();
+					mThreads.put(mod, t);
+					log.log("Module loaded: " + mod.getName());
+				} catch (Exception e) {
+					e.printStackTrace();
+					log.log("Unable to load module: " + f.getAbsolutePath());
+				}
+			} else {
+				log.log("Module: " + f.getPath() + " not found!");
+			}
+
+		}
 	}
 
 	/**

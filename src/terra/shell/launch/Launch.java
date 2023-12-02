@@ -172,6 +172,7 @@ public class Launch {
 		if (launchConf == null) {
 			launchConf = new Configuration(new File(confD.getPath(), "launch"));
 			launchConf.setValue("loadEmbeddedCmds", "true");
+			launchConf.setValue("promptCommandRepo", "false");
 			launchConf.setValue("launchTerminal", "true");
 			launchConf.setValue("debug", "false");
 		}
@@ -240,26 +241,26 @@ public class Launch {
 			log.err("Lua interpretation may not function as expected!");
 		}
 
+		log.log("Accessing " + fPrefix + "/bin/jsh");
+		// readBin, read commands from <prefix>/bin/JSH
+		readBin();
+		// Get commands from terra.shell.command
+
+		// Check whether or not embedded commands are enabled
+		if (Boolean.parseBoolean((String) launchConf.getValue("loadEmbeddedCmds"))) {
+			log.log("Loading embedded commands");
+			try {
+				// Load embedded commands
+				getLocalCommands();
+			} catch (IOException e) {
+				e.printStackTrace();
+				log.err("Failed to access local embedded commands");
+			}
+		}
+
 		// Check terminal flags, if none are detected launch terminal, otherwise run as
 		// daemon
 		if (doTerm && Boolean.parseBoolean((String) launchConf.getValue("launchTerminal"))) {
-			log.log("Accessing " + fPrefix + "/bin/jsh");
-			// readBin, read commands from <prefix>/bin/JSH
-			readBin();
-			// Get commands from terra.shell.command
-
-			// Check whether or not embedded commands are enabled
-			if (Boolean.parseBoolean((String) launchConf.getValue("loadEmbeddedCmds"))) {
-				log.log("Loading embedded commands");
-				try {
-					// Load embedded commands
-					getLocalCommands();
-				} catch (IOException e) {
-					e.printStackTrace();
-					log.err("Failed to access local embedded commands");
-				}
-			}
-
 			// Init Terminal
 			EventManager.invokeEvent(new InitEvent(InitStage.INIT_COMPLETION));
 			Terminal t = new Terminal();
@@ -456,6 +457,10 @@ public class Launch {
 		final File bin = new File(fPrefix + "/bin/jsh");
 		// Check if dir exists
 		if (!bin.exists()) {
+			if (((String) launchConf.getValue("promptCommandRepo")).equals("false")) {
+				return;
+			}
+
 			// If dir is non existent, tell the user and ask to use a remote repo
 			log.log(fPrefix + "/bin/jsh is not existent!");
 			while (true) {
