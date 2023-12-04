@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
 Sealed: true
-Class-Path: ./lib/flatlaf-2.0-rc1.jar
+Class-Path: ./JSH/lib/
 Main-Class: terra.shell.launch.Launch
 

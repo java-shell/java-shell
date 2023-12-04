@@ -9,6 +9,7 @@ import java.lang.annotation.Target;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.zip.CRC32;
 
 import terra.shell.logging.LogManager;
@@ -23,6 +24,7 @@ public class ByteClassLoader extends URLClassLoader {
 
 	// TODO Find better way to reload dynamically loaded classes
 	protected HashMap<String, ClassData> loaded;
+	protected final HashSet<ClassLoader> children;
 
 	/**
 	 * Create a ByteClassLoader which can access Files located at the given URLs
@@ -33,6 +35,14 @@ public class ByteClassLoader extends URLClassLoader {
 	public ByteClassLoader(URL[] url, ClassLoader parent) {
 		super(url, parent);
 		loaded = new HashMap<String, ClassData>();
+		children = new HashSet<ClassLoader>();
+		if (parent instanceof ByteClassLoader) {
+			((ByteClassLoader) parent).addChild(this);
+		}
+	}
+
+	protected void addChild(ClassLoader c) {
+		children.add(c);
 	}
 
 	/**
@@ -43,6 +53,7 @@ public class ByteClassLoader extends URLClassLoader {
 	public ByteClassLoader(URL[] url) {
 		super(url);
 		loaded = new HashMap<String, ClassData>();
+		children = new HashSet<ClassLoader>();
 	}
 
 	/**
